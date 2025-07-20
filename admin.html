@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel</title>
+    <link rel="stylesheet" href="styles.css?v=1.1">
+</head>
+<body>
+    <div class="container">
+        <div class="form-container">
+            <h1 style="text-align: center; color: var(--primary-color);">Admin Panel</h1>
+            
+            <!-- Admin Token Section -->
+            <div class="form-step active">
+                <h2>Authentication</h2>
+                <div class="form-group">
+                    <label for="admin-token">Admin Token:</label>
+                    <input type="password" id="admin-token" placeholder="Enter admin token" required>
+                </div>
+                <button type="button" id="auth-btn">Authenticate</button>
+            </div>
+
+            <!-- CSV Export Section -->
+            <div id="csv-section" class="form-step" style="display: none;">
+                <h2>CSV Export</h2>
+                <button type="button" id="download-btn">Download CSV</button>
+            </div>
+
+            <!-- Bias Analysis Section -->
+            <div id="bias-section" class="form-step" style="display: none;">
+                <h2>Bias Analysis</h2>
+                <div class="form-group">
+                    <label for="ai-service">AI Service:</label>
+                    <select id="ai-service">
+                        <option value="google">Google AI (Embedded Key)</option>
+                        <option value="openai">OpenAI (Requires API Key)</option>
+                        <option value="test">Test Mode (Mock Response)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="openai-api-key">OpenAI API Key (if using OpenAI):</label>
+                    <input type="password" id="openai-api-key" placeholder="Enter your OpenAI API key">
+                </div>
+                <div class="form-group">
+                    <label for="vignette-input">Vignette to Analyze:</label>
+                    <textarea id="vignette-input" rows="4" placeholder="Enter or paste a vignette..."></textarea>
+                </div>
+                <button type="button" id="bias-analysis-btn">Analyze for Bias</button>
+                <div class="form-group" style="margin-top: 20px;">
+                    <label for="bias-result">Bias Analysis Result:</label>
+                    <textarea id="bias-result" rows="6" readonly placeholder="Analysis will appear here..."></textarea>
+                </div>
+            </div>
+
+            <div id="status" class="status" style="display: none; margin-top: 20px; padding: 10px; border-radius: 8px;"></div>
+        </div>
+    </div>
+
+    <script>
+        let adminToken = '';
+
+        // Authentication
+        document.getElementById('auth-btn').addEventListener('click', async () => {
+            const token = document.getElementById('admin-token').value;
+            if (!token.trim()) {
+                showStatus('Please enter the admin token.', 'error');
+                return;
+            }
+            try {
+                const response = await fetch('/api/export', {
+                    headers: { 'X-Admin-Token': token }
+                });
+                if (response.status === 403) {
+                    throw new Error('Invalid admin token');
+                }
+                adminToken = token;
+                document.getElementById('csv-section').style.display = 'block';
+                document.getElementById('bias-section').style.display = 'block';
+                document.querySelector('.form-step.active').style.display = 'none'; // Hide auth
+                showStatus('Authentication successful!', 'success');
+            } catch (err) {
+                showStatus('Error: ' + err.message, 'error');
+            }
+        });
+
+        // CSV Download
+        document.getElementById('download-btn').addEventListener('click', async () => {
+            const downloadBtn = document.getElementById('download-btn');
+            try {
+                downloadBtn.disabled = true;
+                downloadBtn.textContent = 'Downloading...';
+                const response = await fetch('/api/export', {
+                    headers: { 'X-Admin-Token': adminToken }
+                });
+                if (!response.ok) {
+                    throw new Error(response.status === 404 ? 'No data to export' : 'Download failed');
+                }
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'submissions.csv';
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                window.URL.revokeObjectURL(url);
+                showStatus('CSV downloaded successfully!', 'success');
+            } catch (err) {
+                showStatus('Error: ' + err.message, 'error');
+            }
+            finally {
+                downloadBtn.disabled = false;
+                downloadBtn.textContent = 'Download CSV';
+            }
+        });
+
+        // Bias Analysis
+        document.getElementById('bias-analysis-btn').addEventListener('click', async () => {
+            const vignette = document.getElementById('vignette-input').value;
+            const apiKey = document.getElementById('openai-api-key').value;
+            const service = document.getElementById('ai-service').value;
+            const biasBtn = document.getElementById('bias-analysis-btn');
+            
+            if (!vignette.trim()) {
+                showStatus('Please enter a vignette to analyze.', 'error');
+                return;
+            }
+            if (service === 'openai' && !apiKey.trim()) {
+                showStatus('Please enter your OpenAI API key.', 'error');
+                return;
+            }
+            
+            try {
+                biasBtn.disabled = true;
+                biasBtn.textContent = 'Analyzing...';
+                document.getElementById('bias-result').value = 'Analyzing...';
+
+                const response = await fetch('/api/bias', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Admin-Token': adminToken
+                    },
+                    body: JSON.stringify({ vignette, service, api_key: apiKey })
+                });
+
+                if (!response.ok) {
+                    const err = await response.json();
+                    throw new Error(err.error || 'Analysis failed');
+                }
+
+                const result = await response.json();
+                document.getElementById('bias-result').value = `[${(result.service || service).toUpperCase()} ANALYSIS]\n\n${result.bias_analysis}`;
+                showStatus(`Analysis complete using ${result.service || service}!`, 'success');
+            } catch (err) {
+                document.getElementById('bias-result').value = 'Error: ' + err.message;
+                showStatus('Error: ' + err.message, 'error');
+            }
+            finally {
+                biasBtn.disabled = false;
+                biasBtn.textContent = 'Analyze for Bias';
+            }
+        });
+        
+        function showStatus(message, type) {
+            const status = document.getElementById('status');
+            status.textContent = message;
+            status.className = `status ${type}`;
+            status.style.display = 'block';
+            status.style.backgroundColor = type === 'success' ? '#d4edda' : '#f8d7da';
+            status.style.color = type === 'success' ? '#155724' : '#721c24';
+        }
+    </script>
+</body>
+</html>

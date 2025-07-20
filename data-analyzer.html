@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Data Analyzer</title>
+    <link rel="stylesheet" href="styles.css?v=1.1">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        .analyzer-container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 30px;
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+            min-height: 100vh;
+            font-family: 'Arial', sans-serif;
+        }
+        
+        .analyzer-card {
+            background: white;
+            border-radius: 15px;
+            padding: 40px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .analyzer-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 5px;
+            background: linear-gradient(90deg, #ff6b6b, #4ecdc4, #45b7d1, #96ceb4);
+        }
+        
+        .analyzer-title {
+            font-size: 2.5em;
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .analyzer-subtitle {
+            font-size: 1.2em;
+            color: #7f8c8d;
+            text-align: center;
+            margin-bottom: 40px;
+            font-style: italic;
+        }
+        
+        .upload-section {
+            border: 3px dashed #ddd;
+            border-radius: 15px;
+            padding: 40px;
+            text-align: center;
+            margin-bottom: 30px;
+            transition: all 0.3s ease;
+            background: #fafafa;
+        }
+        
+        .upload-section.dragover {
+            border-color: #007bff;
+            background: #f0f8ff;
+        }
+        
+        .upload-icon {
+            font-size: 4em;
+            color: #007bff;
+            margin-bottom: 20px;
+        }
+        
+        .upload-text {
+            font-size: 1.2em;
+            color: #2c3e50;
+            margin-bottom: 20px;
+        }
+        
+        .upload-limits {
+            font-size: 0.9em;
+            color: #7f8c8d;
+            margin-bottom: 20px;
+        }
+        
+        .file-input {
+            display: none;
+        }
+        
+        .upload-button {
+            background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 25px;
+            font-size: 1.1em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 10px;
+        }
+        
+        .upload-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 123, 255, 0.3);
+        }
+        
+        .text-input-section {
+            margin-bottom: 30px;
+        }
+        
+        .text-input {
+            width: 100%;
+            min-height: 200px;
+            padding: 20px;
+            border: 2px solid #ddd;
+            border-radius: 12px;
+            font-size: 16px;
+            font-family: 'Courier New', monospace;
+            resize: vertical;
+            transition: border-color 0.3s ease;
+            box-sizing: border-box;
+        }
+        
+        .text-input:focus {
+            outline: none;
+            border-color: #007bff;
+            box-shadow: 0 0 10px rgba(0, 123, 255, 0.2);
+        }
+        
+        .analyze-button {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            color: white;
+            border: none;
+            padding: 20px 40px;
+            border-radius: 30px;
+            font-size: 1.3em;
+            cursor: pointer;
+            display: block;
+            margin: 30px auto;
+            transition: all 0.3s ease;
+            box-shadow: 0 8px 25px rgba(40, 167, 69, 0.3);
+        }
+        
+        .analyze-button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 35px rgba(40, 167, 69, 0.4);
+        }
+        
+        .analyze-button:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            color: #6c757d;
+            font-style: italic;
+            margin: 20px 0;
+        }
+        
+        .file-info {
+            background: #e9ecef;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            display: none;
+        }
+        
+        .analysis-result {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 15px;
+            margin-top: 30px;
+            display: none;
+            line-height: 1.8;
+        }
+        
+        .analysis-result h3 {
+            margin-top: 0;
+            font-size: 1.8em;
+            text-align: center;
+            margin-bottom: 25px;
+        }
+        
+        .analysis-content {
+            font-size: 1.1em;
+            white-space: pre-wrap;
+        }
+        
+        .back-link {
+            display: inline-block;
+            color: white;
+            text-decoration: none;
+            padding: 12px 24px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 25px;
+            margin-bottom: 20px;
+            transition: all 0.3s ease;
+        }
+        
+        .back-link:hover {
+            background: rgba(255,255,255,0.3);
+            transform: translateY(-2px);
+        }
+        
+        .data-types {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin: 30px 0;
+        }
+        
+        .data-type {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            border-left: 4px solid #007bff;
+        }
+        
+        .data-type-icon {
+            font-size: 2em;
+            color: #007bff;
+            margin-bottom: 10px;
+        }
+        
+        .data-type-title {
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 5px;
+        }
+        
+        .data-type-desc {
+            font-size: 0.9em;
+            color: #7f8c8d;
+        }
+        
+        .data-type.clickable {
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .data-type.clickable:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 15px rgba(0, 123, 255, 0.2);
+        }
+        
+        .data-type.selected {
+            border-left: 4px solid #28a745;
+            background: #e8f5e8;
+        }
+        
+        .conditional-section {
+            display: none;
+            margin: 30px 0;
+        }
+        
+        .chat-section {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 30px;
+            margin: 30px 0;
+            display: none;
+        }
+        
+        .chat-messages {
+            height: 400px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            background: white;
+        }
+        
+        .chat-message {
+            margin-bottom: 20px;
+            padding: 15px;
+            border-radius: 12px;
+            max-width: 85%;
+            animation: fadeIn 0.3s ease-in;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .chat-message.user {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            margin-left: auto;
+            text-align: right;
+        }
+        
+        .chat-message.ai {
+            background: #e9ecef;
+            color: #333;
+            margin-right: auto;
+            border-left: 4px solid #007bff;
+        }
+        
+        .chat-input-container {
+            display: flex;
+            gap: 15px;
+            align-items: flex-end;
+        }
+        
+        .chat-input {
+            flex: 1;
+            padding: 15px;
+            border: 2px solid #ddd;
+            border-radius: 12px;
+            font-size: 16px;
+            resize: vertical;
+            min-height: 50px;
+            max-height: 150px;
+            transition: border-color 0.3s ease;
+        }
+        
+        .chat-input:focus {
+            outline: none;
+            border-color: #007bff;
+            box-shadow: 0 0 10px rgba(0, 123, 255, 0.2);
+        }
+        
+        .chat-send-button {
+            padding: 15px 25px;
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            min-width: 100px;
+        }
+        
+        .chat-send-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(40, 167, 69, 0.3);
+        }
+        
+        .chat-send-button:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .refine-button {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 25px;
+            cursor: pointer;
+            margin: 10px;
+            transition: all 0.3s ease;
+        }
+        
+        .refine-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255, 107, 107, 0.3);
+        }
+    </style>
+</head>
+<body>
+    <div class="analyzer-container">
+        <a href="/main-menu.html" class="back-link">
+            <i class="fas fa-arrow-left"></i> Back to Main Menu
+        </a>
+        
+        <div class="analyzer-card">
+            <h1 class="analyzer-title">🔍 AI Data Interpreter</h1>
+            <p class="analyzer-subtitle">Expert interpretation of statistical results, visualizations, and analytical outputs</p>
+            
+            <!-- Debug Info -->
+            <div id="debug-info" style="background: #f0f0f0; padding: 10px; border-radius: 5px; margin-bottom: 20px; font-family: monospace; font-size: 12px; color: #666; display: none;">
+                <strong>Debug:</strong> AI Model: <span id="ai-model-name">Loading...</span>
+            </div>
+            
+            <!-- Step 1: Problem, Context and Target -->
+            <div class="description-section" style="background: #e8f4fd; padding: 30px; border-radius: 12px; margin: 30px 0; border-left: 5px solid #007bff;">
+                <h3 style="color: #2c3e50; margin-bottom: 20px;">🎯 Step 1: Problem, Context and Target of Analysis</h3>
+                <textarea id="data-description" style="width: 100%; padding: 15px; border: 2px solid #ddd; border-radius: 8px; font-size: 14px; min-height: 100px; box-sizing: border-box;" placeholder="Describe the problem you're investigating, the context of your research, and what you want to achieve with this analysis (e.g., 'Investigating whether online learning is more effective than traditional classroom learning for undergraduate mathematics students. Want to understand if the difference is statistically and practically significant.')"></textarea>
+            </div>
+
+            <!-- Step 2: Analysis Output -->
+            <div style="background: #f8f9fa; padding: 30px; border-radius: 12px; margin: 30px 0;">
+                <h3 style="color: #2c3e50; margin-bottom: 20px;">📊 Step 2: Paste Analysis Output (T-test, ANOVA, etc.)</h3>
+                
+                <!-- Image Upload Section -->
+                <div class="upload-section" id="main-upload-section" style="margin-bottom: 20px;">
+                    <div class="upload-icon">
+                        <i class="fas fa-image"></i>
+                    </div>
+                    <div class="upload-text">
+                        <strong>Upload Image/Chart (Optional)</strong>
+                    </div>
+                    <div class="upload-limits">
+                        Maximum file size: 500KB | Supported: JPG, PNG, GIF
+                    </div>
+                    <input type="file" id="main-file-input" class="file-input" accept=".jpg,.jpeg,.png,.gif">
+                    <button class="upload-button" onclick="document.getElementById('main-file-input').click()">
+                        <i class="fas fa-upload"></i> Choose Image
+                    </button>
+                </div>
+                
+                <div class="file-info" id="main-file-info" style="display: none; margin-bottom: 20px;">
+                    <strong>Image Selected:</strong> <span id="main-file-name"></span><br>
+                    <strong>Size:</strong> <span id="main-file-size"></span>
+                </div>
+
+                <!-- Text Input Section -->
+                <div class="text-input-section">
+                    <h4 style="color: #2c3e50; margin-bottom: 15px;">Or paste your statistical output/data directly:</h4>
+                    <textarea id="text-input" class="text-input" placeholder="Paste your statistical output, test results, or data here...
+
+Examples:
+- T-test results from SPSS/R/Python
+- ANOVA output tables
+- Correlation matrices
+- Descriptive statistics
+- Network analysis results
+- Process mining outputs
+- Transition network data
+- Any statistical visualization or table"></textarea>
+                </div>
+            </div>
+
+            <!-- Step 3: Data Upload Evidence -->
+            <div id="data-evidence-section" style="background: #e8f5e8; padding: 30px; border-radius: 12px; margin: 30px 0; border-left: 5px solid #28a745; display: none;">
+                <h3 style="color: #2c3e50; margin-bottom: 20px;">✅ Step 3: Data Upload Evidence</h3>
+                <div id="evidence-content">
+                    <!-- This will be populated when data is uploaded -->
+                </div>
+            </div>
+
+            <!-- Step 4: Analysis Type -->
+            <div style="background: #fff3cd; padding: 30px; border-radius: 12px; margin: 30px 0; border-left: 5px solid #ffc107;">
+                <h3 style="color: #2c3e50; margin-bottom: 20px;">🔍 Step 4: Analysis Type</h3>
+                <select id="analysis-type" style="width: 100%; padding: 15px; border: 2px solid #ddd; border-radius: 8px; font-size: 16px; box-sizing: border-box;">
+                    <option value="">Select the type of analysis to interpret...</option>
+                    <option value="statistical_test">Statistical Test Results (t-test, ANOVA, chi-square, etc.)</option>
+                    <option value="descriptive_stats">Descriptive Statistics (means, frequencies, distributions)</option>
+                    <option value="correlation">Correlation/Regression Analysis</option>
+                    <option value="network_analysis">Network Analysis (social networks, process mining)</option>
+                    <option value="transition_network">Transition Network Analysis (state changes, pathways)</option>
+                    <option value="visualization">Chart/Graph Interpretation</option>
+                    <option value="comparative">Comparative Analysis (group differences)</option>
+                    <option value="longitudinal">Longitudinal/Time Series Analysis</option>
+                    <option value="other">Other (specify in context section)</option>
+                </select>
+            </div>
+
+            <!-- Step 4: Research Context -->
+            <div style="background: #d4edda; padding: 30px; border-radius: 12px; margin: 30px 0; border-left: 5px solid #28a745;">
+                <h3 style="color: #2c3e50; margin-bottom: 20px;">📝 Step 4: Research Context</h3>
+                <textarea id="research-context" style="width: 100%; padding: 15px; border: 2px solid #ddd; border-radius: 8px; font-size: 14px; min-height: 100px; box-sizing: border-box;" placeholder="Describe your research context (e.g., 'Study comparing online vs traditional learning effectiveness in undergraduate mathematics courses')"></textarea>
+            </div>
+            
+            <!-- AI Model Selection Section -->
+            <div style="background: #f0f8ff; padding: 30px; border-radius: 12px; margin: 30px 0; border-left: 5px solid #007bff;">
+                <h3 style="color: #2c3e50; margin-bottom: 20px;">🤖 AI Model Selection</h3>
+                
+                <!-- Service Selection -->
+                <div style="margin-bottom: 20px;">
+                    <label style="display: block; margin-bottom: 10px; font-weight: bold; color: #2c3e50;">AI Service:</label>
+                    <select id="ai-service" style="width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 16px; box-sizing: border-box;">
+                        <option value="openai">OpenAI (GPT Models)</option>
+                        <option value="google">Google (Gemini Models)</option>
+                    </select>
+                </div>
+                
+                <!-- Model Selection -->
+                <div style="margin-bottom: 20px;">
+                    <label style="display: block; margin-bottom: 10px; font-weight: bold; color: #2c3e50;">AI Model:</label>
+                    <select id="ai-model" style="width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 16px; box-sizing: border-box;">
+                        <!-- Options will be populated by JavaScript -->
+                    </select>
+                    <div id="model-description" style="margin-top: 8px; font-size: 14px; color: #666; font-style: italic;">
+                        <!-- Model description will be shown here -->
+                    </div>
+                </div>
+                
+                <!-- API Key Input -->
+                <div style="margin-bottom: 20px;">
+                    <label style="display: block; margin-bottom: 10px; font-weight: bold; color: #2c3e50;">
+                        Your API Key (Optional):
+                        <span style="font-weight: normal; color: #666; font-size: 14px;">Leave empty to use system default</span>
+                    </label>
+                    <input type="password" id="user-api-key" placeholder="Enter your own API key (optional)" style="width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 16px; box-sizing: border-box;">
+                    <div style="margin-top: 8px; font-size: 12px; color: #666;">
+                        <i class="fas fa-info-circle"></i> Using your own API key gives you full control and may provide access to newer models. Your key is only used for this session and is not stored.
+                    </div>
+                </div>
+                
+                <!-- System Status -->
+                <div id="api-status" style="padding: 10px; border-radius: 6px; font-size: 14px; margin-top: 15px;">
+                    <!-- Status will be populated by JavaScript -->
+                </div>
+            </div>
+            
+            <div class="loading" id="loading">
+                <i class="fas fa-spinner fa-spin"></i> Analyzing your data...
+            </div>
+            
+            <div style="text-align: center; margin-bottom: 20px;">
+                <button onclick="fillTestData()" style="background: linear-gradient(45deg, #ff6b6b, #ee5a24); color: white; border: none; padding: 12px 24px; border-radius: 25px; cursor: pointer; transition: all 0.3s ease; font-size: 14px; margin-right: 10px;">
+                    <i class="fas fa-magic"></i> Fill Test Data
+                </button>
+            </div>
+            
+            <button id="analyze-button" class="analyze-button">
+                <i class="fas fa-microscope"></i> Interpret Data
+            </button>
+            
+            <!-- Conditional Input Sections -->
+            <div class="conditional-section" id="statistical-section">
+                <h3 style="color: #2c3e50; margin-bottom: 20px;">📊 Step 2: Statistical Test Data</h3>
+                <div class="text-input-section">
+                    <textarea id="statistical-input" class="text-input" placeholder="Paste your statistical test output here...
+
+Examples:
+- T-test: t(28) = 2.45, p = 0.021, Cohen's d = 0.89
+- ANOVA: F(2,87) = 5.67, p = 0.005, η² = 0.115
+- Regression: R² = 0.234, F(3,96) = 9.78, p < 0.001
+- Chi-square: χ²(2) = 8.45, p = 0.015, Cramer's V = 0.29"></textarea>
+                </div>
+            </div>
+
+            <div class="conditional-section" id="descriptive-section">
+                <h3 style="color: #2c3e50; margin-bottom: 20px;">📈 Step 2: Descriptive Statistics</h3>
+                <div class="text-input-section">
+                    <textarea id="descriptive-input" class="text-input" placeholder="Paste your descriptive statistics here...
+
+Examples:
+- Mean = 85.4, SD = 12.3, N = 150
+- Median = 78, IQR = 15-92, Range = 45-98
+- Frequency table with percentages
+- Correlation matrix
+- Cross-tabulation results"></textarea>
+                </div>
+            </div>
+
+            <div class="conditional-section" id="network-section">
+                <h3 style="color: #2c3e50; margin-bottom: 20px;">🕸️ Step 2: Network Analysis Data</h3>
+                <div class="text-input-section">
+                    <textarea id="network-input" class="text-input" placeholder="Paste your network analysis results here...
+
+Examples:
+- Social Network: Density = 0.34, Centralization = 0.67
+- Process Mining: 15 activities, 8 decision points, 3 loops
+- Transition Network: 12 states, 45 transitions, avg path length = 4.2
+- Centrality measures: Betweenness, Closeness, Eigenvector
+- Community detection results"></textarea>
+                </div>
+            </div>
+
+            <div class="conditional-section" id="image-section">
+                <h3 style="color: #2c3e50; margin-bottom: 20px;">🖼️ Step 2: Upload Image/Chart</h3>
+                <div class="upload-section" id="image-upload-section">
+                    <div class="upload-icon">
+                        <i class="fas fa-image"></i>
+                    </div>
+                    <div class="upload-text">
+                        <strong>Upload your chart, graph, or visualization</strong>
+                    </div>
+                    <div class="upload-limits">
+                        Maximum file size: 300KB | Supported: JPG, PNG, GIF
+                    </div>
+                    <input type="file" id="image-input" class="file-input" accept=".jpg,.jpeg,.png,.gif">
+                    <button class="upload-button" onclick="document.getElementById('image-input').click()">
+                        <i class="fas fa-upload"></i> Choose Image
+                    </button>
+                </div>
+            </div>
+
+            <div class="analysis-result" id="analysis-result">
+                <h3>📋 Initial Analysis</h3>
+                <div class="analysis-content" id="analysis-content"></div>
+                <div style="text-align: center; margin-top: 20px;">
+                    <button class="refine-button" onclick="startChat()">
+                        <i class="fas fa-comments"></i> Discuss & Refine Analysis
+                    </button>
+                    <button class="refine-button" onclick="generateProfessionalPrompt()" style="background: linear-gradient(135deg, #6f42c1 0%, #5a2d91 100%);">
+                        <i class="fas fa-magic"></i> Get Professional Prompt
+                    </button>
+                </div>
+            </div>
+
+            <!-- Professional Prompt Section -->
+            <div class="analysis-result" id="prompt-result" style="background: linear-gradient(135deg, #6f42c1 0%, #5a2d91 100%); display: none;">
+                <h3>🎯 Professional AI Prompt</h3>
+                <p style="margin-bottom: 20px; opacity: 0.9;">Use this optimized prompt with any AI model (ChatGPT, Claude, Gemini, etc.) to get similar analysis results:</p>
+                <div style="background: rgba(255,255,255,0.1); padding: 20px; border-radius: 10px; margin-bottom: 20px;">
+                    <textarea id="professional-prompt" readonly style="width: 100%; min-height: 200px; background: rgba(255,255,255,0.9); color: #333; padding: 15px; border: none; border-radius: 8px; font-family: 'Courier New', monospace; font-size: 14px; box-sizing: border-box; resize: vertical;"></textarea>
+                </div>
+                <div style="text-align: center;">
+                    <button class="refine-button" onclick="copyPromptToClipboard()" style="background: rgba(255,255,255,0.2); border: 2px solid rgba(255,255,255,0.5);">
+                        <i class="fas fa-copy"></i> Copy Prompt
+                    </button>
+                    <button class="refine-button" onclick="downloadPrompt()" style="background: rgba(255,255,255,0.2); border: 2px solid rgba(255,255,255,0.5);">
+                        <i class="fas fa-download"></i> Download as Text
+                    </button>
+                </div>
+            </div>
+
+            <!-- Interactive Chat Section -->
+            <div class="chat-section" id="chat-section">
+                <h3 style="color: #2c3e50; text-align: center; margin-bottom: 20px;">💬 Interactive Analysis Discussion</h3>
+                <p style="text-align: center; color: #7f8c8d; margin-bottom: 20px;">
+                    Discuss your analysis with AI! Ask questions, request clarifications, or explore different interpretations.
+                </p>
+                
+                <div class="chat-messages" id="chat-messages">
+                    <div class="chat-message ai">
+                        <strong>AI Interpreter:</strong> Great! I've provided an initial analysis of your data. Now let's discuss it further. You can:
+                        <br><br>
+                        • <strong>Ask questions</strong> about specific parts of the analysis<br>
+                        • <strong>Request clarifications</strong> on statistical concepts<br>
+                        • <strong>Explore implications</strong> for your research<br>
+                        • <strong>Discuss limitations</strong> and alternative interpretations<br>
+                        • <strong>Refine the context</strong> for better insights<br>
+                        <br>
+                        What would you like to discuss about your analysis?
+                    </div>
+                </div>
+                
+                <div class="loading" id="chat-loading" style="display: none; text-align: center; color: #6c757d; font-style: italic; margin: 10px 0;">
+                    <i class="fas fa-spinner fa-spin"></i> AI is thinking...
+                </div>
+                
+                <div class="chat-input-container">
+                    <textarea id="chat-input" class="chat-input" placeholder="Ask about your analysis, request clarifications, or explore different interpretations..." rows="2"></textarea>
+                    <button id="chat-send" class="chat-send-button" onclick="sendChatMessage()">
+                        <i class="fas fa-paper-plane"></i> Send
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // User session management
+        let userId = localStorage.getItem('userId');
+        if (!userId) {
+            userId = 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+            localStorage.setItem('userId', userId);
+        }
+
+        // Global variables for AI configuration
+        let availableModels = {};
+        let currentAIConfig = {};
+
+        // Log page load and get debug info
+        fetch('/api/
