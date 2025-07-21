@@ -1,0 +1,70 @@
+# LAILA Platform: Change Review & QA Checklist
+
+This file lists all changes made in this session. Please review, test, and fix as needed. Each item includes the file(s) affected, a description of the change, and what to verify.
+
+---
+
+## 1. Admin Role Implementation
+- **Files:** users.csv, app.py
+- **Description:**
+  - Added an `is_admin` field to `users.csv` to distinguish admin users.
+  - Updated user loading logic in `app.py` to read and use the `is_admin` field.
+  - Created a `require_true_admin` decorator in `app.py` to restrict `/admin.html` and all admin-only API endpoints to users with `is_admin=True`.
+  - Only users with `is_admin=True` can access admin features; others receive a 403 error.
+- **What to check:**
+  - Only admin users can access `/admin.html` and admin APIs.
+  - Non-admins are denied access (403 Forbidden).
+  - User login, registration, and session logic still work for all users.
+
+---
+
+## 2. System-wide AI Settings Control from Admin Page
+- **Files:** admin.html, app.py, config.py, system_settings.csv
+- **Description:**
+  - Added a new section to `admin.html` for system-wide AI settings (service, model, API keys).
+  - Created new admin-only API endpoints in `app.py` to get and update system-wide AI settings, stored in `system_settings.csv`.
+  - Refactored `config.py` to load system settings from `system_settings.csv` at runtime, with fallback to hardcoded defaults.
+  - Frontend logic in `admin.html` fetches and updates these settings via the new endpoints.
+- **What to check:**
+  - After admin authentication, the system settings section is visible and functional.
+  - Changing settings updates `system_settings.csv` and is reflected in the backend.
+  - Non-admins cannot access or modify system settings.
+
+---
+
+## 3. Data Interpreter Image Upload & Preview Fix
+- **Files:** data-analyzer.html
+- **Description:**
+  - Refactored image upload logic so that uploading an image only generates a thumbnail preview and updates file info.
+  - The textarea for statistical output/data is **never** populated with image data (no more garbled/binary text).
+  - Added logic to distinguish between file and image uploads, and to use the correct MIME type for thumbnails.
+- **What to check:**
+  - Uploading an image shows only the thumbnail and file info; the textarea remains empty.
+  - Uploading a text file populates the textarea as expected.
+  - No binary/garbled data appears in the textarea after image upload.
+  - Drag-and-drop and manual file selection both work.
+
+---
+
+## 4. General QA & Bug Fixes
+- **Files:** app.py, data-analyzer.html
+- **Description:**
+  - Fixed a backend bug: added `import time` to `app.py` to resolve `NameError: name 'time' is not defined` in the `/api/interpret-data` endpoint.
+  - Ensured all admin-only endpoints use the new `require_true_admin` decorator.
+  - Updated frontend event handling to avoid duplicate or legacy handlers.
+- **What to check:**
+  - All endpoints work without server errors.
+  - No JavaScript errors in the browser console.
+  - All new/changed features are robust against edge cases (e.g., large files, wrong file types, unauthorized access).
+
+---
+
+## 5. Testing & Verification
+- **Test as both admin and non-admin users.**
+- **Test all admin features, including system settings and CSV export.**
+- **Test all data upload scenarios in the data interpreter (image, text, drag-and-drop).**
+- **Check for regressions in unrelated features (login, user settings, chat, etc.).**
+
+---
+
+**If any issues are found, please document them and fix as needed.** 

@@ -1,0 +1,2 @@
+user_id,ai_service,ai_model,use_custom_keys,openai_key,google_key,default_audience,show_debug,auto_save,last_updated
+me@saqr.me,google,gemini-1.5-pro,False,,,undergraduate,False,True,2025-07-21T09:55:26.895416

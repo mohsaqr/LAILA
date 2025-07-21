@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Settings - LAILA</title>
+    <link rel="stylesheet" href="styles.css?v=1.1">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        .settings-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            font-family: 'Arial', sans-serif;
+        }
+        
+        .settings-card {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            margin-bottom: 30px;
+        }
+        
+        .settings-header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        
+        .settings-title {
+            font-size: 2.5em;
+            color: #2c3e50;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+        
+        .settings-subtitle {
+            font-size: 1.2em;
+            color: #7f8c8d;
+            margin-bottom: 20px;
+        }
+        
+        .back-link {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            text-decoration: none;
+            padding: 12px 24px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 25px;
+            margin-bottom: 20px;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+        
+        .back-link:hover {
+            background: rgba(255,255,255,0.3);
+            transform: translateY(-2px);
+        }
+        
+        .settings-section {
+            margin-bottom: 40px;
+            padding: 30px;
+            border-radius: 15px;
+            border-left: 5px solid;
+        }
+        
+        .settings-section.ai-config {
+            background: #f0f8ff;
+            border-left-color: #007bff;
+        }
+        
+        .settings-section.api-keys {
+            background: #fff3cd;
+            border-left-color: #ffc107;
+        }
+        
+        .settings-section.preferences {
+            background: #d4edda;
+            border-left-color: #28a745;
+        }
+        
+        .section-title {
+            font-size: 1.5em;
+            color: #2c3e50;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+        
+        .form-group {
+            margin-bottom: 25px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #2c3e50;
+            font-weight: bold;
+        }
+        
+        .form-group select,
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e1e5e9;
+            border-radius: 8px;
+            font-size: 16px;
+            box-sizing: border-box;
+            transition: border-color 0.3s ease;
+        }
+        
+        .form-group select:focus,
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .model-description {
+            margin-top: 8px;
+            font-size: 14px;
+            color: #666;
+            font-style: italic;
+        }
+        
+        .api-status {
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+            font-weight: bold;
+        }
+        
+        .api-status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .api-status.warning {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+        
+        .api-status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .save-button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 25px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            width: 100%;
+            margin-top: 20px;
+        }
+        
+        .save-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        .save-button:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .info-box {
+            background: #e8f4fd;
+            border: 1px solid #bee5eb;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .info-box h4 {
+            color: #0c5460;
+            margin-bottom: 10px;
+        }
+        
+        .info-box p {
+            color: #0c5460;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+        
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 60px;
+            height: 34px;
+        }
+        
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 34px;
+        }
+        
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 26px;
+            width: 26px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        
+        input:checked + .slider {
+            background-color: #667eea;
+        }
+        
+        input:checked + .slider:before {
+            transform: translateX(26px);
+        }
+        
+        .toggle-label {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 15px;
+        }
+        
+        .toggle-text {
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        
+        @media (max-width: 768px) {
+            .settings-container {
+                padding: 15px;
+            }
+            
+            .settings-card {
+                padding: 20px;
+            }
+            
+            .settings-title {
+                font-size: 2em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="settings-container">
+        <a href="main-menu.html" class="back-link">
+            <i class="fas fa-arrow-left"></i> Back to Main Menu
+        </a>
+        
+        <div class="settings-card">
+            <div class="settings-header">
+                <h1 class="settings-title">⚙️ User Settings</h1>
+                <p class="settings-subtitle">Configure your AI preferences and API settings</p>
+            </div>
+            
+            <form id="settings-form">
+                <!-- AI Configuration Section -->
+                <div class="settings-section ai-config">
+                    <h2 class="section-title">
+                        <i class="fas fa-robot"></i> AI Model Configuration
+                    </h2>
+                    
+                    <div class="info-box">
+                        <h4><i class="fas fa-info-circle"></i> How it works:</h4>
+                        <p>• Your settings apply to all LAILA tools (Data Interpreter, Prompt Helper, etc.)</p>
+                        <p>• If you don't provide API keys, the system will use default keys</p>
+                        <p>• Changes are saved automatically and persist across sessions</p>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="ai-service">Default AI Service:</label>
+                        <select id="ai-service" name="ai_service">
+                            <option value="google">Google (Gemini Models)</option>
+                            <option value="openai">OpenAI (GPT Models)</option>
+                        </select>
+                        <div class="model-description">This will be your default AI service across all tools</div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="ai-model">Default AI Model:</label>
+                        <select id="ai-model" name="ai_model">
+                            <!-- Options will be populated by JavaScript -->
+                        </select>
+                        <div class="model-description">This will be your default AI model across all tools</div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <div class="toggle-label">
+                            <span class="toggle-text">Use my API keys (if provided below)</span>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="use-custom-keys">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                        <div class="model-description">When enabled, your API keys will be used instead of system defaults</div>
+                    </div>
+                </div>
+                
+                <!-- API Keys Section -->
+                <div class="settings-section api-keys">
+                    <h2 class="section-title">
+                        <i class="fas fa-key"></i> API Keys (Optional)
+                    </h2>
+                    
+                    <div class="info-box">
+                        <h4><i class="fas fa-shield-alt"></i> Security Note:</h4>
+                        <p>• Your API keys are stored locally and never shared</p>
+                        <p>• Keys are only used when "Use my API keys" is enabled</p>
+                        <p>• Leave empty to use system default keys</p>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="openai-key">OpenAI API Key:</label>
+                        <input type="password" id="openai-key" name="openai_key" placeholder="sk-...">
+                        <div class="model-description">Your OpenAI API key for GPT models</div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="google-key">Google AI API Key:</label>
+                        <input type="password" id="google-key" name="google_key" placeholder="AIza...">
+                        <div class="model-description">Your Google AI API key for Gemini models</div>
+                    </div>
+                    
+                    <div id="api-status" class="api-status" style="display: none;">
+                        <!-- Status will be populated by JavaScript -->
+                    </div>
+                </div>
+                
+                <!-- User Preferences Section -->
+                <div class="settings-section preferences">
+                    <h2 class="section-title">
+                        <i class="fas fa-user-cog"></i> User Preferences
+                    </h2>
+                    
+                    <div class="form-group">
+                        <label for="default-audience">Default Audience Level:</label>
+                        <select id="default-audience" name="default_audience">
+                            <option value="undergraduate">Undergraduate Students</option>
+                            <option value="graduate">Graduate Students</option>
+                            <option value="researcher">Researchers/Academics</option>
+                            <option value="educator">Educators/Teachers</option>
+                            <option value="administrator">Administrators</option>
+                            <option value="general">General Public</option>
+                        </select>
+                        <div class="model-description">Default audience level for AI responses across tools</div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <div class="toggle-label">
+                            <span class="toggle-text">Show debug information</span>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="show-debug">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                        <div class="model-description">Display technical information about AI model usage</div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <div class="toggle-label">
+                            <span class="toggle-text">Auto-save settings</span>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="auto-save" checked>
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                        <div class="model-description">Automatically save settings when changed</div>
+                    </div>
+                </div>
+                
+                <button type="submit" class="save-button" id="save-button">
+                    <i class="fas fa-save"></i> Save Settings
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let availableModels = {};
+        let currentSettings = {};
+        let isAutoSave = true;
+
+        // Initialize the page
+        document.addEventListener('DOMContentLoaded', function() {
+            loadSettings();
+            loadAIConfiguration();
+            setupEventListeners();
+        });
+
+        // Load AI configuration
+        async function loadAIConfiguration() {
+            try {
+                const response = await fetch('/api/ai-config');
+                const config = await response.json();
+                availableModels = config.available_models;
+                updateModelSelectors();
+            } catch (error) {
+                console.error('Error loading AI configuration:', error);
+            }
+        }
+
+        // Update model selectors
+        function updateModelSelectors() {
+            const serviceSelect = document.getElementById('ai-service');
+            const modelSelect = document.getElementById('ai-model');
+            
+            if (serviceSelect && modelSelect) {
+                // Clear existing options
+                modelSelect.innerHTML = '';
+                
+                // Add models for selected service
+                const selectedService = serviceSelect.value;
+                const models = availableModels[selectedService] || [];
+                
+                models.forEach(model => {
+                    const option = document.createElement('option');
+                    option.value = model.id;
+                    option.textContent = model.name;
+                    modelSelect.appendChild(option);
+                });
+                
+                // Set default model for service
+                if (selectedService === 'openai') {
+                    modelSelect.value = 'gpt-4o-mini';
+                } else if (selectedService === 'google') {
+                    modelSelect.value = 'gemini-1.5-flash';
+                }
+            }
+        }
+
+        // Load user settings
+        async function loadSettings() {
+            try {
+                const response = await fetch('/api/user-settings');
+                const settings = await response.json();
+                
+                if (settings.success) {
+                    currentSettings = settings.settings;
+                    populateForm(settings.settings);
+                }
+            } catch (error) {
+                console.error('Error loading settings:', error);
+            }
+        }
+
+        // Populate form with settings
+        function populateForm(settings) {
+            // AI Configuration
+            if (settings.ai_service) {
+                document.getElementById('ai-service').value = settings.ai_service;
+                updateModelSelectors();
+            }
+            
+            if (settings.ai_model) {
+                document.getElementById('ai-model').value = settings.ai_model;
+            }
+            
+            if (settings.use_custom_keys !== undefined) {
+                document.getElementById('use-custom-keys').checked = settings.use_custom_keys;
+            }
+            
+            // API Keys
+            if (settings.openai_key) {
+                document.getElementById('openai-key').value = settings.openai_key;
+            }
+            
+            if (settings.google_key) {
+                document.getElementById('google-key').value = settings.google_key;
+            }
+            
+            // Preferences
+            if (settings.default_audience) {
+                document.getElementById('default-audience').value = settings.default_audience;
+            }
+            
+            if (settings.show_debug !== undefined) {
+                document.getElementById('show-debug').checked = settings.show_debug;
+            }
+            
+            if (settings.auto_save !== undefined) {
+                document.getElementById('auto-save').checked = settings.auto_save;
+                isAutoSave = settings.auto_save;
+            }
+        }
+
+        // Setup event listeners
+        function setupEventListeners() {
+            // Service selector change
+            const serviceSelect = document.getElementById('ai-service');
+            if (serviceSelect) {
+                serviceSelect.addEventListener('change', function() {
+                    updateModelSelectors();
+                    if (isAutoSave) {
+                        saveSettings();
+                    }
+                });
+            }
+            
+            // Model selector change
+            const modelSelect = document.getElementById('ai-model');
+            if (modelSelect) {
+                modelSelect.addEventListener('change', function() {
+                    if (isAutoSave) {
+                        saveSettings();
+                    }
+                });
+            }
+            
+            // Form submission
+            const form = document.getElementById('settings-form');
+            if (form) {
+                form.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    saveSettings();
+                });
+            }
+            
+            // Auto-save toggle
+            const autoSaveToggle = document.getElementById('auto-save');
+            if (autoSaveToggle) {
+                autoSaveToggle.addEventListener('change', function() {
+                    isAutoSave = this.checked;
+                    if (isAutoSave) {
+                        saveSettings();
+                    }
+                });
+            }
+            
+            // Other toggles
+            const toggles = ['use-custom-keys', 'show-debug'];
+            toggles.forEach(toggleId => {
+                const toggle = document.getElementById(toggleId);
+                if (toggle) {
+                    toggle.addEventListener('change', function() {
+                        if (isAutoSave) {
+                            saveSettings();
+                        }
+                    });
+                }
+            });
+            
+            // Text inputs
+            const inputs = ['openai-key', 'google-key', 'default-audience'];
+            inputs.forEach(inputId => {
+                const input = document.getElementById(inputId);
+                if (input) {
+                    input.addEventListener('input', function() {
+                        if (isAutoSave) {
+                            saveSettings();
+                        }
+                    });
+                }
+            });
+        }
+
+        // Save settings
+        async function saveSettings() {
+            const saveButton = document.getElementById('save-button');
+            const originalText = saveButton.innerHTML;
+            
+            // Show loading state
+            saveButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+            saveButton.disabled = true;
+            
+            try {
+                const formData = {
+                    ai_service: document.getElementById('ai-service').value,
+                    ai_model: document.getElementById('ai-model').value,
+                    use_custom_keys: document.getElementById('use-custom-keys').checked,
+                    openai_key: document.getElementById('openai-key').value,
+                    google_key: document.getElementById('google-key').value,
+                    default_audience: document.getElementById('default-audience').value,
+                    show_debug: document.getElementById('show-debug').checked,
+                    auto_save: document.getElementById('auto-save').checked
+                };
+                
+                const response = await fetch('/api/user-settings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(formData)
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showStatus('Settings saved successfully!', 'success');
+                    currentSettings = formData;
+                } else {
+                    showStatus('Error saving settings: ' + result.message, 'error');
+                }
+            } catch (error) {
+                console.error('Error saving settings:', error);
+                showStatus('Error saving settings. Please try again.', 'error');
+            } finally {
+                // Restore button state
+                saveButton.innerHTML = originalText;
+                saveButton.disabled = false;
+            }
+        }
+
+        // Show status message
+        function showStatus(message, type) {
+            const statusDiv = document.getElementById('api-status');
+            if (statusDiv) {
+                statusDiv.className = `api-status ${type}`;
+                statusDiv.innerHTML = `<i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle'}"></i> ${message}`;
+                statusDiv.style.display = 'block';
+                
+                // Hide after 3 seconds
+                setTimeout(() => {
+                    statusDiv.style.display = 'none';
+                }, 3000);
+            }
+        }
+    </script>
+</body>
+</html> 

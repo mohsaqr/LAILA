@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Academic Assistant - LAILA</title>
+    <link rel="stylesheet" href="styles.css?v=1.1">
+    <link rel="stylesheet" href="unified-styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <script src="navigation.js"></script>
+    <style>
+
+
+        body {
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            font-family: 'Arial', sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .main-container {
+            max-width: 1200px;
+            width: 100%;
+            padding: 40px;
+            text-align: center;
+        }
+        
+        .main-title {
+            color: white;
+            font-size: 3.5em;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+            font-weight: bold;
+        }
+        
+        .main-subtitle {
+            color: rgba(255,255,255,0.9);
+            font-size: 1.4em;
+            margin-bottom: 60px;
+            font-weight: 300;
+        }
+        
+        .purpose-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 25px;
+            margin-top: 40px;
+            justify-content: center;
+        }
+        
+        .purpose-card {
+            background: white;
+            border-radius: 20px;
+            padding: 40px 30px;
+            text-decoration: none;
+            color: #2c3e50;
+            transition: all 0.3s ease;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .purpose-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 5px;
+            background: var(--card-color);
+        }
+        
+        .purpose-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+        }
+        
+        .purpose-card.story {
+            --card-color: linear-gradient(45deg, #667eea, #764ba2);
+        }
+        
+        .purpose-card.prompt {
+            --card-color: linear-gradient(45deg, #28a745, #20c997);
+        }
+        
+        .purpose-card.data {
+            --card-color: linear-gradient(45deg, #ff6b6b, #ee5a24);
+        }
+        
+        .purpose-card.form {
+            --card-color: linear-gradient(45deg, #007bff, #0056b3);
+        }
+        
+        .purpose-card.custom {
+            --card-color: linear-gradient(45deg, #6f42c1, #e83e8c);
+        }
+        
+        .purpose-icon {
+            font-size: 4em;
+            margin-bottom: 20px;
+            background: var(--card-color);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .purpose-title {
+            font-size: 1.5em;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #2c3e50;
+        }
+        
+        .purpose-description {
+            color: #666;
+            line-height: 1.6;
+            margin-bottom: 20px;
+        }
+        
+        .purpose-features {
+            text-align: left;
+            color: #555;
+            font-size: 0.9em;
+        }
+        
+        .purpose-features ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        
+        .purpose-features li {
+            padding: 5px 0;
+            position: relative;
+            padding-left: 20px;
+        }
+        
+        .purpose-features li:before {
+            content: '✓';
+            position: absolute;
+            left: 0;
+            color: #28a745;
+            font-weight: bold;
+        }
+        
+        @media (max-width: 768px) {
+            .main-title {
+                font-size: 2.5em;
+            }
+            
+            .main-subtitle {
+                font-size: 1.2em;
+            }
+            
+            .purpose-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .user-info, .logout-button {
+                position: relative;
+                top: auto;
+                left: auto;
+                right: auto;
+                margin: 10px;
+                display: inline-block;
+            }
+        }
+    </style>
+</head>
+<body>
+
+
+    <div class="main-container">
+        <h1 class="main-title">LAILA</h1>
+        <p class="main-subtitle">Learn AI and LA Platform - Your Academic Research Assistant</p>
+        
+        <div class="purpose-grid">
+            <a href="bias-research-platform.html" class="purpose-card story">
+                <div class="purpose-icon">
+                    <i class="fas fa-balance-scale"></i>
+                </div>
+                <div class="purpose-title">Bias Research Platform</div>
+                <div class="purpose-description">
+                    Comprehensive toolkit for creating and analyzing academic vignettes with AI-powered bias detection.
+                </div>
+                <div class="purpose-features">
+                    <ul>
+                        <li>Interactive Story Builder</li>
+                        <li>Quick Story Generator</li>
+                        <li>Comparison Stories</li>
+                        <li>AI Bias Analysis</li>
+                    </ul>
+                </div>
+            </a>
+            
+            <a href="prompt-helper.html" class="purpose-card prompt">
+                <div class="purpose-icon">
+                    <i class="fas fa-magic"></i>
+                </div>
+                <div class="purpose-title">Prompt Engineering</div>
+                <div class="purpose-description">
+                    Expert-guided prompt creation using the PCTFT framework for optimal AI interactions.
+                </div>
+                <div class="purpose-features">
+                    <ul>
+                        <li>Guided Prompt Creation</li>
+                        <li>PCTFT Framework</li>
+                        <li>Data Schema Suggestions</li>
+                        <li>Interactive Refinement</li>
+                    </ul>
+                </div>
+            </a>
+            
+            <a href="data-analyzer.html" class="purpose-card data">
+                <div class="purpose-icon">
+                    <i class="fas fa-chart-line"></i>
+                </div>
+                <div class="purpose-title">Data Interpreter</div>
+                <div class="purpose-description">
+                    AI-powered statistical analysis and interpretation for educational research data.
+                </div>
+                <div class="purpose-features">
+                    <ul>
+                        <li>Statistical Analysis</li>
+                        <li>Educational Focus</li>
+                        <li>Interactive Discussion</li>
+                        <li>Multiple Data Formats</li>
+                    </ul>
+                </div>
+            </a>
+            
+            <a href="chatbot-config.html" class="purpose-card form">
+                <div class="purpose-icon">
+                    <i class="fas fa-user-graduate"></i>
+                </div>
+                <div class="purpose-title">Custom AI Tutor</div>
+                <div class="purpose-description">
+                    Create your personalized AI teaching assistant with custom subjects, personality, and learning objectives.
+                </div>
+                <div class="purpose-features">
+                    <ul>
+                        <li>Custom Persona & Subject</li>
+                        <li>Learning Objectives</li>
+                        <li>Teaching Constraints</li>
+                        <li>Save/Load Configurations</li>
+                    </ul>
+                </div>
+            </a>
+            
+            <a href="custom-chatbots.html" class="purpose-card custom" style="--card-color: linear-gradient(45deg, #6f42c1, #e83e8c);">
+                <div class="purpose-icon">
+                    <i class="fas fa-robot"></i>
+                </div>
+                <div class="purpose-title">Custom Chatbots</div>
+                <div class="purpose-description">
+                    Interact with specialized AI assistants designed for different research and academic tasks.
+                </div>
+                <div class="purpose-features">
+                    <ul>
+                        <li>Research Methods Helper</li>
+                        <li>Academic Writing Tutor</li>
+                        <li>Platform Guide Assistant</li>
+                        <li>Specialized AI Support</li>
+                    </ul>
+                </div>
+            </a>
+        </div>
+    </div>
+
+    <script>
+        // Get user information from the server
+        fetch('/api/user-info')
+            .then(response => response.json())
+            .then(data => {
+                if (data.user) {
+                    document.getElementById('userName').textContent = data.user.fullname;
+                }
+            })
+            .catch(error => {
+                console.log('Could not fetch user info:', error);
+            });
+        
+        function logout() {
+            if (confirm('Are you sure you want to logout?')) {
+                window.location.href = '/logout';
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,54 @@
+LAILA - Learn AI and LA Platform
+=====================================
+
+Package Contents:
+- app.py                              # Flask backend server
+- config.py                           # Configuration and API keys
+- requirements.txt                    # Python dependencies
+- styles.css                         # CSS styling
+- index.html                         # Main menu (entry point)
+- main-menu.html                     # Main menu page
+- bias-research-platform.html        # Bias research toolkit
+- story-form.html                    # Interactive story builder
+- chat.html                          # AI chat interface
+- prompt-helper.html                 # Prompt engineering tool
+- data-analyzer.html                 # Data interpretation tool
+- chatbot-config.html                # Educational chatbot configurator
+- chatbot-interface.html             # Chatbot interface
+- admin.html                         # Admin panel for data management
+
+AI System Prompts:
+- bias-analysis-system-prompt.txt    # Bias analysis AI prompt
+- prompt-helper-system-prompt.txt    # Prompt engineering AI prompt
+- interpret-data-system-prompt.txt   # Data interpretation AI prompt
+
+Documentation:
+- README.md                          # Complete documentation
+- QUICK_START.md                     # 5-minute setup guide
+- PACKAGE_INFO.txt                   # This file
+
+Installation Scripts:
+- install.sh                         # Linux/Mac automatic installation
+- install.bat                        # Windows automatic installation
+
+Quick Installation:
+1. Run install.sh (Linux/Mac) or install.bat (Windows)
+2. python app.py
+3. Open http://localhost:5001
+
+Complete Feature Set:
+✅ 🎯 Bias Research Platform - Comprehensive bias research toolkit
+✅ 🚀 Prompt Engineering - AI prompt creation with expert guidance
+✅ 🔍 Data Interpreter - Statistical analysis and interpretation
+✅ 🤖 Educational Chatbot - Custom AI teaching assistants
+✅ Interactive Story Builder - Detailed vignette creation
+✅ Quick Story Generator - Rapid scenario creation
+✅ Comparison Stories - Gender/Geographic bias analysis
+✅ AI Chat Integration - OpenAI GPT & Google Gemini support
+✅ Data Collection - Research tracking and CSV export
+✅ Cross-platform - Works on Windows, Mac, Linux
+✅ Self-contained - No external dependencies beyond Python
+
+Version: 1.0
+Created: January 2025
+Purpose: Complete academic AI assistant platform for research and education

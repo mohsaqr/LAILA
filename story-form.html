@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Journey Story Builder</title>
+    <link rel="stylesheet" href="styles.css?v=1.1">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        .story-container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            font-family: 'Georgia', serif;
+        }
+        
+        .story-card {
+            background: white;
+            border-radius: 15px;
+            padding: 40px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .story-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 5px;
+            background: linear-gradient(90deg, #ff6b6b, #4ecdc4, #45b7d1, #96ceb4);
+        }
+        
+        .story-title {
+            font-size: 2.5em;
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .story-subtitle {
+            font-size: 1.2em;
+            color: #7f8c8d;
+            text-align: center;
+            margin-bottom: 40px;
+            font-style: italic;
+        }
+        
+        .story-section {
+            margin-bottom: 40px;
+            padding: 30px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            border-left: 5px solid #3498db;
+        }
+        
+        .story-text {
+            font-size: 1.1em;
+            line-height: 1.8;
+            color: #2c3e50;
+            margin-bottom: 20px;
+        }
+        
+        .story-input {
+            display: block;
+            background: #fff;
+            border: 2px solid #3498db;
+            border-radius: 8px;
+            padding: 12px 20px;
+            margin: 10px 0;
+            font-weight: bold;
+            color: #2980b9;
+            width: 100%;
+            max-width: 100%;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-sizing: border-box;
+        }
+        
+        .story-input:hover {
+            background: #3498db;
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(52, 152, 219, 0.3);
+        }
+        
+        .story-input select, .story-input input, .story-input textarea {
+            border: none;
+            background: transparent;
+            font-size: 1em;
+            font-weight: bold;
+            color: inherit;
+            width: 100%;
+            text-align: center;
+            outline: none;
+        }
+        
+        .story-input textarea {
+            resize: vertical;
+            min-height: 60px;
+            text-align: left;
+            padding: 10px;
+        }
+        
+        .chapter-number {
+            display: inline-block;
+            background: #e74c3c;
+            color: white;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            text-align: center;
+            line-height: 40px;
+            font-weight: bold;
+            margin-right: 15px;
+            font-size: 1.2em;
+        }
+        
+        .chapter-title {
+            font-size: 1.8em;
+            color: #2c3e50;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+        }
+        
+        .auto-fill-btn {
+            background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 25px;
+            font-size: 1.1em;
+            cursor: pointer;
+            margin: 20px auto;
+            display: block;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(238, 90, 36, 0.3);
+        }
+        
+        .auto-fill-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(238, 90, 36, 0.4);
+        }
+        
+        .generate-story-btn {
+            background: linear-gradient(45deg, #4ecdc4, #44a08d);
+            color: white;
+            border: none;
+            padding: 20px 40px;
+            border-radius: 30px;
+            font-size: 1.3em;
+            cursor: pointer;
+            margin: 30px auto;
+            display: block;
+            transition: all 0.3s ease;
+            box-shadow: 0 8px 25px rgba(68, 160, 141, 0.3);
+        }
+        
+        .generate-story-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 35px rgba(68, 160, 141, 0.4);
+        }
+        
+        .final-story {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 15px;
+            margin-top: 30px;
+            font-size: 1.2em;
+            line-height: 1.8;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        
+        .final-story h3 {
+            color: #fff;
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 1.8em;
+        }
+        
+        .submit-btn {
+            background: linear-gradient(45deg, #2ecc71, #27ae60);
+            color: white;
+            border: none;
+            padding: 20px 40px;
+            border-radius: 30px;
+            font-size: 1.3em;
+            cursor: pointer;
+            margin: 30px auto;
+            display: block;
+            transition: all 0.3s ease;
+            box-shadow: 0 8px 25px rgba(39, 174, 96, 0.3);
+        }
+        
+        .submit-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 35px rgba(39, 174, 96, 0.4);
+        }
+        
+        .navigation-dots {
+            text-align: center;
+            margin: 30px 0;
+        }
+        
+        .dot {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #bdc3c7;
+            margin: 0 5px;
+            transition: all 0.3s ease;
+        }
+        
+        .dot.active {
+            background: #3498db;
+            transform: scale(1.3);
+        }
+        
+        .back-link {
+            display: inline-block;
+            color: white;
+            text-decoration: none;
+            padding: 10px 20px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 20px;
+            margin-bottom: 20px;
+            transition: all 0.3s ease;
+        }
+        
+        .back-link:hover {
+            background: rgba(255,255,255,0.3);
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+<body>
+    <div class="story-container">
+        <a href="/" class="back-link">
+            <i class="fas fa-arrow-left"></i> Back to Main Menu
+        </a>
+        
+        <div class="story-card">
+            <h1 class="story-title">📚 Student Journey Story Builder</h1>
+            <p class="story-subtitle">Create a compelling academic story by filling in the blanks</p>
+            
+            <button class="auto-fill-btn" onclick="autoFillStory()">
+                <i class="fas fa-magic"></i> Auto-Fill with Sample Story
+            </button>
+            
+            <form id="story-form">
+                <!-- Chapter 1: The Student -->
+                <div class="story-section">
+                    <div class="chapter-title">
+                        <span class="chapter-number">1</span>
+                        The Student's Background
+                    </div>
+                    <div class="story-text">
+                        Once upon a time, there was a student from 
+                        <span class="story-input">
+                            <select name="Nationality" required>
+                                <option value="">choose country</option>
+                            </select>
+                        </span>
+                        who identified with 
+                        <span class="story-input">
+                            <select name="Pronoun" required>
+                                <option value="">pronoun</option>
+                                <option value="his">his</option>
+                                <option value="her">her</option>
+                                <option value="their">their</option>
+                            </select>
+                        </span>
+                        pronouns. This student had a unique personality and learning style - 
+                        <span class="story-input">
+                            <textarea name="Student_State_Trait_Behaviour" placeholder="describe the student's behavior and traits..." required></textarea>
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Chapter 2: The Academic Journey -->
+                <div class="story-section">
+                    <div class="chapter-title">
+                        <span class="chapter-number">2</span>
+                        The Academic Journey
+                    </div>
+                    <div class="story-text">
+                        Our student was pursuing a 
+                        <span class="story-input">
+                            <select name="Degree_Level" required>
+                                <option value="">degree level</option>
+                            </select>
+                        </span>
+                        in the field of 
+                        <span class="story-input">
+                            <select name="Field_of_Study" required>
+                                <option value="">field of study</option>
+                            </select>
+                        </span>
+                        and was progressing very 
+                        <span class="story-input">
+                            <select name="Progress_Descriptor" required>
+                                <option value="">how well?</option>
+                                <option value="well">well</option>
+                                <option value="poorly">poorly</option>
+                            </select>
+                        </span>
+                        in their academic goals.
+                    </div>
+                </div>
+
+                <!-- Chapter 3: The Evidence -->
+                <div class="story-section">
+                    <div class="chapter-title">
+                        <span class="chapter-number">3</span>
+                        The Digital Footprint
+                    </div>
+                    <div class="story-text">
+                        How did we know about this student's progress? The learning analytics revealed a clear pattern: 
+                        <span class="story-input">
+                            <textarea name="Learning_Analytics" placeholder="describe what the data showed about their learning behavior..." required></textarea>
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Chapter 4: The Intervention -->
+                <div class="story-section">
+                    <div class="chapter-title">
+                        <span class="chapter-number">4</span>
+                        The Support Plan
+                    </div>
+                    <div class="story-text">
+                        Recognizing the student's needs, their mentor designed a support plan. The student would receive 
+                        <span class="story-input">
+                            <select name="Support_Hours" required>
+                                <option value="">hours</option>
+                            </select>
+                        </span>
+                        hours of support every 
+                        <span class="story-input">
+                            <select name="Support_Period" required>
+                                <option value="">period</option>
+                                <option value="Per Week">week</option>
+                                <option value="Per Month">month</option>
+                            </select>
+                        </span>
+                        . This support would be delivered 
+                        <span class="story-input">
+                            <select name="Support_Delivery_Method" required>
+                                <option value="">how?</option>
+                                <option value="By the teacher">by the teacher</option>
+                                <option value="At home (self-directed)">at home (self-directed)</option>
+                                <option value="By a senior peer">by a senior peer</option>
+                            </select>
+                        </span>
+                        . The specific intervention chosen was 
+                        <span class="story-input">
+                            <input type="text" name="Support_Decision" placeholder="what kind of support?" required>
+                        </span>
+                        for a duration of 
+                        <span class="story-input">
+                            <select name="Support_Duration" required>
+                                <option value="">how long?</option>
+                                <option value="One semester">one semester</option>
+                                <option value="Six weeks">six weeks</option>
+                                <option value="Two months">two months</option>
+                                <option value="One month">one month</option>
+                                <option value="Other">other</option>
+                            </select>
+                        </span>
+                        .
+                    </div>
+                </div>
+
+                <!-- Chapter 5: The Outcome -->
+                <div class="story-section">
+                    <div class="chapter-title">
+                        <span class="chapter-number">5</span>
+                        The Final Chapter
+                    </div>
+                    <div class="story-text">
+                        After receiving the support, our student achieved a score of 
+                        <span class="story-input">
+                            <input type="number" name="Support_Result" min="0" max="100" placeholder="0-100" required>
+                        </span>
+                        out of 100 and ultimately 
+                        <span class="story-input">
+                            <select name="Completion_Status" required>
+                                <option value="">what happened?</option>
+                                <option value="completed">completed</option>
+                                <option value="dropped out of">dropped out of</option>
+                                <option value="continued with">continued with</option>
+                            </select>
+                        </span>
+                        the program.
+                    </div>
+                </div>
+
+                <div class="navigation-dots">
+                    <span class="dot active"></span>
+                    <span class="dot"></span>
+                    <span class="dot"></span>
+                    <span class="dot"></span>
+                    <span class="dot"></span>
+                </div>
+
+                <button type="button" class="generate-story-btn" onclick="generateCompleteStory()">
+                    <i class="fas fa-book-open"></i> Generate Complete Story
+                </button>
+
+                <div id="final-story" class="final-story" style="display: none;">
+                    <h3>📖 Your Complete Student Story</h3>
+                    <div id="story-content"></div>
+                    
+                    <button type="submit" class="submit-btn">
+                        <i class="fas fa-paper-plane"></i> Submit Story & Continue to Chat
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Removed unnecessary success modal -->
+
+    <script>
+        // User session management
+        let userId = localStorage.getItem('userId');
+        if (!userId) {
+            userId = 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+            localStorage.setItem('userId', userId);
+        }
+
+        // Log page load
+        fetch('/api/log-interaction', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                user_id: userId,
+                interaction_type: 'page_load',
+                page: 'story_form',
+                action: 'story_form_opened',
+                details: 'User opened story-driven form',
+                session_data: ''
+            })
+        }).catch(console.error);
+
+        // Populate dropdowns
+        const nationalities = {
+            "North America": ["United States", "Canada", "Mexico"],
+            "Europe": ["Germany", "United Kingdom", "France", "Italy", "Spain", "Netherlands", "Belgium", "Sweden", "Norway", "Denmark", "Finland", "Poland", "Switzerland", "Austria", "Portugal", "Greece", "Ireland"],
+            "Asia": ["China", "India", "Japan", "South Korea", "Turkey"],
+            "Latin America & Caribbean": ["Brazil", "Argentina", "Colombia", "Chile", "Peru"]
+        };
+        
+        const degreeLevels = ["K12 School", "Bachelor's Degree", "Master's Degree", "Doctoral Degree"];
+        const fieldsOfStudy = ["Computer Science", "Psychology", "Mathematics", "Nursing", "Business Administration", "Engineering", "Chemistry", "Medicine", "Physics", "Sociology", "Literature", "Philosophy", "Environmental Science", "History", "Biology"];
+        const supportHours = Array.from({ length: 8 }, (_, i) => i + 1);
+
+        // Populate nationality dropdown
+        const nationalitySelect = document.querySelector('select[name="Nationality"]');
+        Object.keys(nationalities).forEach(region => {
+            const optgroup = document.createElement('optgroup');
+            optgroup.label = region;
+            nationalities[region].forEach(country => {
+                const option = document.createElement('option');
+                option.value = country;
+                option.textContent = country;
+                optgroup.appendChild(option);
+            });
+            nationalitySelect.appendChild(optgroup);
+        });
+
+        // Populate other dropdowns
+        const degreeLevelSelect = document.querySelector('select[name="Degree_Level"]');
+        degreeLevels.forEach(level => {
+            const option = document.createElement('option');
+            option.value = level;
+            option.textContent = level;
+            degreeLevelSelect.appendChild(option);
+        });
+
+        const fieldSelect = document.querySelector('select[name="Field_of_Study"]');
+        fieldsOfStudy.forEach(field => {
+            const option = document.createElement('option');
+            option.value = field;
+            option.textContent = field;
+            fieldSelect.appendChild(option);
+        });
+
+        const hoursSelect = document.querySelector('select[name="Support_Hours"]');
+        supportHours.forEach(hours => {
+            const option = document.createElement('option');
+            option.value = hours;
+            option.textContent = hours;
+            hoursSelect.appendChild(option);
+        });
+
+        // Auto-fill function
+        async function autoFillStory() {
+            try {
+                const response = await fetch('/api/auto-fill');
+                const data = await response.json();
+                
+                // Fill form fields
+                Object.keys(data).forEach(key => {
+                    const element = document.querySelector(`[name="${key}"]`);
+                    if (element) {
+                        element.value = data[key];
+                    }
+                });
+                
+                // Log auto-fill
+                fetch('/api/log-interaction', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        user_id: userId,
+                        interaction_type: 'form_interaction',
+                        page: 'story_form',
+                        action: 'auto_fill_story',
+                        details: 'Story auto-filled with sample data',
+                        session_data: JSON.stringify(data)
+                    })
+                }).catch(console.error);
+                
+                alert('📚 Story filled with sample data!');
+            } catch (error) {
+                console.error('Auto-fill failed:', error);
+                alert('Failed to auto-fill story');
+            }
+        }
+
+        // Generate complete story
+        function generateCompleteStory() {
+            const formData = new FormData(document.getElementById('story-form'));
+            const data = Object.fromEntries(formData.entries());
+            
+            // Check if all required fields are filled
+            const requiredFields = ['Nationality', 'Pronoun', 'Student_State_Trait_Behaviour', 'Degree_Level', 'Field_of_Study', 'Progress_Descriptor', 'Learning_Analytics', 'Support_Hours', 'Support_Period', 'Support_Delivery_Method', 'Support_Decision', 'Support_Duration', 'Support_Result', 'Completion_Status'];
+            
+            for (const field of requiredFields) {
+                if (!data[field]) {
+                    alert(`Please fill in the "${field.replace(/_/g, ' ')}" field to complete your story.`);
+                    return;
+                }
+            }
+            
+            // Format support period for grammar
+            const supportPeriod = (data.Support_Period || '').replace('Per ', '').toLowerCase();
+            
+            // Generate the complete story
+            const story = `This ${data.Nationality} student ${data.Student_State_Trait_Behaviour} is studying ${data.Degree_Level} in ${data.Field_of_Study} and is pursuing ${data.Pronoun} goals and progressing very ${data.Progress_Descriptor}. We know this based on ${data.Learning_Analytics}. For that the mentor advised ${data.Support_Hours} hours of support every ${supportPeriod}. The support is conducted by ${data.Support_Delivery_Method}. After the support the student scored ${data.Support_Result} out of 100 and ${data.Completion_Status} the program.`;
+            
+            // Display the story
+            document.getElementById('story-content').textContent = story;
+            document.getElementById('final-story').style.display = 'block';
+            
+            // Add hidden field for the complete vignette
+            const vignetteInput = document.createElement('input');
+            vignetteInput.type = 'hidden';
+            vignetteInput.name = 'Complete_Vignette';
+            vignetteInput.value = story;
+            document.getElementById('story-form').appendChild(vignetteInput);
+            
+            // Scroll to story
+            document.getElementById('final-story').scrollIntoView({ behavior: 'smooth' });
+            
+            // Log story generation
+            fetch('/api/log-interaction', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    user_id: userId,
+                    interaction_type: 'form_interaction',
+                    page: 'story_form',
+                    action: 'generate_story',
+                    details: 'User generated complete story',
+                    session_data: JSON.stringify({ story_length: story.length })
+                })
+            }).catch(console.error);
+        }
+
+        // Form submission
+        document.getElementById('story-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = new FormData(e.target);
+            const data = Object.fromEntries(formData.entries());
+            data.ID = new Date().getTime();
+            data.user_id = userId;
+            
+            try {
+                const response = await fetch('/api/submit', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+
+                if (!response.ok) {
+                    const err = await response.json();
+                    throw new Error(err.error || 'Submission failed');
+                }
+
+                // Log story submission
+                fetch('/api/log-interaction', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        user_id: userId,
+                        interaction_type: 'story_submission',
+                        page: 'story_form',
+                        action: 'story_submitted_and_redirected',
+                        details: 'Story submitted successfully, redirecting to chat',
+                        session_data: JSON.stringify({ vignette_length: data.Complete_Vignette?.length || 0 })
+                    })
+                }).catch(console.error);
+                
+                // Redirect back to main menu after story submission
+                alert('Story submitted successfully! Returning to main menu.');
+                window.location.href = '/main-menu.html';
+
+            } catch (err) {
+                console.error('Submission error:', err);
+                alert('Submission failed: ' + err.message);
+            }
+        });
+
+        // Modal functionality removed - direct redirect to main menu now used
+    </script>
+</body>
+</html>
