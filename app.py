@@ -23,40 +23,6 @@ import traceback
 import sys
 
 # Enhanced logging functions
-def log_user_interaction(user_id, action, page, element_id=None, element_type=None, element_value=None, additional_data=None):
-    """Log every user interaction/click with detailed information"""
-    try:
-        timestamp = datetime.now().isoformat()
-        session_id = session.get('session_id', str(uuid.uuid4()))
-        
-        log_entry = {
-            'timestamp': timestamp,
-            'user_id': user_id,
-            'session_id': session_id,
-            'action': action,
-            'page': page,
-            'element_id': element_id,
-            'element_type': element_type,
-            'element_value': element_value,
-            'user_agent': request.headers.get('User-Agent', ''),
-            'ip_address': request.remote_addr,
-            'referrer': request.headers.get('Referer', ''),
-            'additional_data': json.dumps(additional_data) if additional_data else None
-        }
-        
-        # Save to user interactions CSV
-        interactions_file = 'user_interactions_detailed.csv'
-        df = pd.DataFrame([log_entry])
-        
-        if os.path.exists(interactions_file):
-            existing_df = pd.read_csv(interactions_file)
-            df = pd.concat([existing_df, df], ignore_index=True)
-        
-        df.to_csv(interactions_file, index=False)
-        
-    except Exception as e:
-        print(f"Error logging user interaction: {str(e)}")
-
 def log_chat_interaction(user_id, chat_type, message_type, content, context_data=None, ai_model=None, ai_response=None, processing_time=None):
     """Log chat interactions to central SQLite database - persistent and reliable"""
     try:
@@ -316,16 +282,8 @@ def initialize_session():
         session['chat_id'] = str(uuid.uuid4())
 
 # Legacy function for backward compatibility
-def log_interaction(interaction_type, page, action, details='', ai_model='', ai_response=''):
     """Legacy logging function - now calls the new detailed logging"""
     user_id = current_user.email if current_user.is_authenticated else 'anonymous'
-    log_user_interaction(user_id, action, page, additional_data={
-        'interaction_type': interaction_type,
-        'details': details,
-        'ai_model': ai_model,
-        'ai_response': ai_response
-    })
-
 app = Flask(__name__, static_folder='.', static_url_path='')
 app.secret_key = os.urandom(24)
 app.config['PERMANENT_SESSION_LIFETIME'] = 86400  # 24 hours
@@ -423,42 +381,6 @@ def login():
             initialize_session()
             
             # Log successful registration
-            log_user_interaction(email, 'registration_success', 'login', additional_data={
-                'fullname': fullname,
-                'registration_method': 'form'
-            })
-            
-            return redirect(url_for('main_menu'))
-            
-        else:
-            # Login flow
-            if user.empty:
-                return render_template_string(LOGIN_TEMPLATE, error="No account found with this email. Please register first.")
-            
-            # Check password
-            hashed_password = user.iloc[0]['password'].encode('utf-8')
-            if bcrypt.checkpw(password.encode('utf-8'), hashed_password):
-                user_obj = load_user(user.iloc[0]['email'])
-                login_user(user_obj, remember=True)
-                session.permanent = True
-                
-                # Initialize session tracking
-                initialize_session()
-                
-                # Log successful login
-                log_user_interaction(email, 'login_success', 'login', additional_data={
-                    'login_method': 'form'
-                })
-                
-                return redirect(url_for('main_menu'))
-            else:
-                # Log failed login attempt
-                log_user_interaction(email, 'login_failed', 'login', additional_data={
-                    'reason': 'invalid_password',
-                    'login_method': 'form'
-                })
-                return render_template_string(LOGIN_TEMPLATE, error="Invalid password. Please try again.")
-
     return render_template_string(LOGIN_TEMPLATE)
 
 @app.route('/register', methods=['GET'])
@@ -471,16 +393,7 @@ def register():
 @login_required
 def logout():
     # Log logout action
-    log_user_interaction(current_user.email, 'logout', 'logout', additional_data={
-        'session_duration': 'tracked_in_session'
-    })
-    
-    logout_user()
-    session.clear()
-    return redirect(url_for('login'))
-
 # --- Enhanced Logging Function ---
-def log_interaction(interaction_type, page, action, details='', ai_model='', ai_response=''):
     user_id = current_user.email if current_user.is_authenticated else 'anonymous'
     fullname = current_user.fullname if current_user.is_authenticated else 'anonymous'
 
@@ -757,7 +670,6 @@ def save_user_settings():
         settings_df.to_csv(settings_file, index=False)
         
         # Log the action
-        log_interaction('settings_update', 'user_settings', 'save_settings', details=settings_data)
         
         return jsonify({'success': True, 'message': 'Settings saved successfully'})
         
@@ -785,7 +697,6 @@ def get_user_info():
 @app.route('/api/field-help/<field_name>', methods=['GET'])
 def get_field_help(field_name):
     """Get explanation and example for a specific field"""
-    log_interaction('tool_usage', 'get_field_help', 'get_field_help', details={'field_name': field_name})
     explanation = get_field_explanation(field_name)
     return jsonify(explanation)
 
@@ -793,7 +704,6 @@ def get_field_help(field_name):
 @app.route('/api/sample-data/<field_name>', methods=['GET'])
 def get_sample_data(field_name):
     """Get random sample data for a specific field"""
-    log_interaction('tool_usage', 'get_sample_data', 'get_sample_data', details={'field_name': field_name})
     sample = get_random_example(field_name)
     return jsonify({'sample': sample})
 
@@ -822,7 +732,6 @@ def get_ai_configuration():
 @app.route('/api/auto-fill', methods=['GET'])
 def auto_fill_form():
     """Generate a complete form filled with logically consistent sample data"""
-    log_interaction('tool_usage', 'auto_fill_form', 'auto_fill_form')
     import random
     
     # Define positive and negative behaviors for logical consistency
@@ -941,24 +850,6 @@ def log_interaction_endpoint():
     user_id = current_user.email if current_user.is_authenticated else 'anonymous'
     
     # Log detailed user interaction
-    log_user_interaction(
-        user_id=user_id,
-        action=data.get('action', ''),
-        page=data.get('page', ''),
-        element_id=data.get('element_id'),
-        element_type=data.get('element_type'),
-        element_value=data.get('element_value'),
-        additional_data={
-            'interaction_type': data.get('interaction_type', ''),
-            'details': data.get('details', ''),
-            'ai_model': data.get('ai_model', ''),
-            'ai_response': data.get('ai_response', ''),
-            'session_data': data.get('session_data', '')
-        }
-    )
-    
-    return jsonify({'status': 'success', 'message': 'Interaction logged'})
-
 # --- Endpoint: Log Chat Interaction ---
 @app.route('/api/log-chat', methods=['POST'])
 def log_chat_endpoint():
@@ -1090,7 +981,6 @@ def submit():
     if not data:
         return jsonify({'error': 'No data provided'}), 400
     
-    log_interaction('tool_usage', 'submit', 'submit', details=data)
     # Add timestamp and user_id if not present
     if 'ID' not in data:
         data['ID'] = int(pd.Timestamp.now().timestamp())
@@ -1527,89 +1417,6 @@ def interpret_data():
     # Log user input for data interpretation
     start_time = time.time()
     user_email = current_user.email if current_user.is_authenticated else 'anonymous'
-    log_user_interaction(user_email, 'data_interpretation_request', 'data_analyzer', additional_data={
-        'data_type': data_type,
-        'analysis_type': analysis_type,
-        'audience_level': audience_level,
-        'data_length': len(data_content),
-        'research_context': research_context,
-        'target_insights': target_insights
-    })
-    
-    try:
-        # Load system prompt from file
-        try:
-            with open('interpret-data-system-prompt.txt', 'r') as f:
-                system_prompt = f.read()
-        except FileNotFoundError:
-            # Fallback system prompt if file not found
-            system_prompt = f"""You are an expert data interpreter specializing in educational research and statistical analysis. Your role is to interpret various types of data outputs, statistical results, and analytical visualizations from an educational research perspective.\n\nProvide interpretations that include:\n1. Statistical Interpretation: What the numbers/results mean\n2. Educational Implications: What this means for learning/teaching\n3. Practical Applications: Actionable insights\n4. Limitations & Considerations: Important caveats\n5. Recommendations: Next steps or applications\n\nAlways tailor your interpretation to the educational research perspective and the specified audience level."""
-        
-        # Create comprehensive interpretation prompt
-        interpretation_prompt = f"""INTERPRETATION REQUEST:\n\nResearch Context: {research_context if research_context else 'General educational research context'}\n\nAnalysis Type: {analysis_type if analysis_type else 'General statistical analysis'}\n\nTarget Insights: {target_insights if target_insights else 'General interpretation and educational implications'}\n\nAudience Level: {audience_level}\n\nData Type: {data_type}\n\nData to Interpret:\n{data_content}\n\nPlease provide a comprehensive interpretation following the framework outlined in the system prompt. Focus on the educational research perspective and tailor the complexity to the specified audience level."""
-        
-        # Use the specified AI service and model
-        result, model = make_ai_call(
-            interpretation_prompt, 
-            system_prompt, 
-            service=ai_service, 
-            model=ai_model, 
-            user_api_key=user_api_key
-        )
-        
-        processing_time = int((time.time() - start_time) * 1000)  # Convert to milliseconds
-        
-        # Log AI response
-        log_chat_interaction(
-            user_id=user_email,
-            chat_type='data_interpreter',
-            message_type='ai_response',
-            content=result,
-            context_data={
-                'data_type': data_type,
-                'analysis_type': analysis_type,
-                'audience_level': audience_level,
-                'research_context': research_context,
-                'target_insights': target_insights,
-                'input_data_sample': data_content[:500]
-            },
-            ai_model=model,
-            ai_response=result,
-            processing_time=processing_time
-        )
-        
-        # Log data analysis operation
-        log_data_analysis(
-            user_id=user_email,
-            analysis_type=f'data_interpretation_{data_type}',
-            input_data=data_content,
-            generated_data=result,
-            ai_model=model,
-            processing_time=processing_time,
-            additional_context={
-                'research_context': research_context,
-                'target_insights': target_insights,
-                'audience_level': audience_level
-            }
-        )
-        
-        return jsonify({'analysis': result, 'status': 'success'})
-        
-    except Exception as e:
-        print(f"Data Interpretation Error: {str(e)}")
-        
-        # Provide fallback interpretation based on analysis type
-        if analysis_type == 'statistical_test':
-            fallback_analysis = f"""I apologize, but I'm having trouble interpreting your statistical test results right now. Here's some general guidance for interpreting statistical tests in educational research:\n\n**Key Elements to Consider:**\n- **Statistical Significance**: Look at p-values (typically p < 0.05 indicates significance)\n- **Effect Size**: Consider practical significance, not just statistical significance\n- **Confidence Intervals**: These provide a range of plausible values\n- **Educational Implications**: What do these results mean for teaching and learning?\n\nFor a more detailed interpretation, please try again or consult with a statistician."""
-        
-        elif analysis_type == 'network_analysis':
-            fallback_analysis = f"""I apologize, but I'm having trouble interpreting your network analysis right now. Here's some general guidance for network analysis in educational research:\n\n**Key Network Metrics:**\n- **Centrality Measures**: Who are the key players in the network?\n- **Clustering**: Are there distinct groups or communities?\n- **Density**: How connected is the network overall?\n- **Educational Applications**: How do these patterns relate to learning, collaboration, or communication?\n\nFor a more detailed interpretation, please try again with a smaller dataset."""
-        
-        else:
-            fallback_analysis = f"""I apologize, but I'm having trouble interpreting your data right now. Here's some general guidance for data interpretation in educational research:\n\n**General Interpretation Framework:**\n- **Descriptive Summary**: What does the data show at face value?\n- **Patterns and Trends**: What patterns emerge from the analysis?\n- **Educational Significance**: How do these findings relate to learning and teaching?\n- **Practical Implications**: What actions might educators take based on these results?\n- **Limitations**: What are the constraints and caveats of this analysis?\n\nPlease try again with a smaller data sample or check the format."""
-        
-        return jsonify({'analysis': fallback_analysis, 'status': 'success'})
-
 # --- Endpoint: Interactive Data Interpretation Chat ---
 @app.route('/api/interpret-chat', methods=['POST'])
 @login_required
@@ -1819,7 +1626,6 @@ def bias_analysis():
     api_key = data.get('api_key')
     service = data.get('service', AI_SERVICE)
     
-    log_interaction('user_input', 'bias_analysis', 'request_bias_analysis', details={'vignette': vignette})
     # Only return mock for explicit test requests
     if api_key == 'test' or api_key == 'TEST':
         # Return mock analysis for testing
@@ -1839,7 +1645,6 @@ def bias_analysis():
             
             response = model.generate_content(prompt)
             result = response.text
-            log_interaction('ai_response', 'bias_analysis', 'bias_analysis_response', details={'vignette': vignette}, ai_model=model_name, ai_response=result)
             return jsonify({'bias_analysis': result, 'service': 'google'})
             
         elif service == 'openai':
@@ -1854,7 +1659,6 @@ def bias_analysis():
                 ]
             )
             result = response.choices[0].message.content
-            log_interaction('ai_response', 'bias_analysis', 'bias_analysis_response', details={'vignette': vignette}, ai_model='gpt-3.5-turbo', ai_response=result)
             return jsonify({'bias_analysis': result, 'service': 'openai'})
             
         else:
