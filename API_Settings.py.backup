@@ -128,38 +128,23 @@ def is_service_available(service):
     api_key = get_api_key(service)
     return api_key is not None and len(api_key.strip()) > 10
 
-def get_ai_config():
-    """Get complete AI configuration with Google priority fallback system"""
+def validate_configuration():
+    """Validate the current API configuration and return any issues"""
+    issues = []
+    
+    # Check if at least one service is available
     google_available = is_service_available('google')
     openai_available = is_service_available('openai')
     
-    # Priority logic: Google first, OpenAI as fallback
-    if google_available:
-        primary_service = 'google'
-        fallback_service = 'openai' if openai_available else None
-    elif openai_available:
-        primary_service = 'openai'
-        fallback_service = None
-    else:
-        primary_service = 'google'  # Default, will use test mode
-        fallback_service = None
+    if not google_available and not openai_available:
+        issues.append("No valid API keys found. Please configure at least one service.")
     
-    return {
-        'default_service': primary_service,
-        'primary_service': primary_service,
-        'fallback_service': fallback_service,
-        'available_services': [primary_service] + ([fallback_service] if fallback_service else []),
-        'google': {
-            'available': google_available,
-            'default_model': get_default_model('google'),
-            'models': get_available_models('google')
-        },
-        'openai': {
-            'available': openai_available,
-            'default_model': get_default_model('openai'),
-            'models': get_available_models('openai')
-        }
-    }
+    # Check default service
+    if DEFAULT_AI_SERVICE not in AI_MODELS:
+        issues.append(f"Invalid default service: {DEFAULT_AI_SERVICE}")
+    elif not is_service_available(DEFAULT_AI_SERVICE):
+        issues.append(f"Default service '{DEFAULT_AI_SERVICE}' has no valid API key")
+    
     return issues
 
 def get_fallback_service():
@@ -211,24 +196,5 @@ def log_api_status():
 # export OPENAI_API_KEY="your_key_here"
 
 # Run validation on import
-def validate_configuration():
-    """Validate the current API configuration and return any issues"""
-    issues = []
-    
-    # Check if at least one service is available
-    google_available = is_service_available('google')
-    openai_available = is_service_available('openai')
-    
-    if not google_available and not openai_available:
-        issues.append("No valid API keys found. Please configure at least one service.")
-    
-    # Check default service
-    if DEFAULT_AI_SERVICE not in AI_MODELS:
-        issues.append(f"Invalid default service: {DEFAULT_AI_SERVICE}")
-    elif not is_service_available(DEFAULT_AI_SERVICE):
-        issues.append(f"Default service '{DEFAULT_AI_SERVICE}' has no valid API key")
-    
-    return issues
-
 if __name__ == "__main__":
-    log_api_status()
+    log_api_status() 

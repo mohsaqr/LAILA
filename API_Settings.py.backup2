@@ -211,6 +211,8 @@ def log_api_status():
 # export OPENAI_API_KEY="your_key_here"
 
 # Run validation on import
+if __name__ == "__main__":
+    log_api_status() 
 def validate_configuration():
     """Validate the current API configuration and return any issues"""
     issues = []
@@ -229,6 +231,3 @@ def validate_configuration():
         issues.append(f"Default service '{DEFAULT_AI_SERVICE}' has no valid API key")
     
     return issues
-
-if __name__ == "__main__":
-    log_api_status()
