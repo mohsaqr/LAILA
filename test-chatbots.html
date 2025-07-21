@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>System Chatbots Test - LAILA</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .chatbot-container {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .chatbot-select {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .chat-messages {
+            min-height: 300px;
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin-bottom: 15px;
+            background-color: #fafafa;
+            border-radius: 5px;
+        }
+        .message {
+            margin-bottom: 15px;
+            padding: 10px;
+            border-radius: 8px;
+        }
+        .message.user {
+            background-color: #e3f2fd;
+            margin-left: 20px;
+        }
+        .message.ai {
+            background-color: #f1f8e9;
+            margin-right: 20px;
+        }
+        .input-container {
+            display: flex;
+            gap: 10px;
+        }
+        .message-input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .send-btn {
+            padding: 10px 20px;
+            background-color: #2196f3;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .send-btn:hover {
+            background-color: #1976d2;
+        }
+        .send-btn:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        .loading {
+            color: #666;
+            font-style: italic;
+        }
+        .error {
+            color: #f44336;
+            background-color: #ffebee;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .greeting {
+            background-color: #e8f5e8;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+            border-left: 4px solid #4caf50;
+        }
+    </style>
+</head>
+<body>
+    <h1>🤖 System Chatbots Test</h1>
+    <p>This page tests the system chatbots functionality. Select a chatbot and start chatting!</p>
+    
+    <div class="chatbot-container">
+        <h3>Select a Chatbot</h3>
+        <select id="chatbot-select" class="chatbot-select">
+            <option value="">Loading chatbots...</option>
+        </select>
+        
+        <div id="greeting-area"></div>
+        
+        <div id="chat-messages" class="chat-messages">
+            <div class="message ai">
+                <strong>System:</strong> Please select a chatbot to start chatting.
+            </div>
+        </div>
+        
+        <div class="input-container">
+            <input type="text" id="message-input" class="message-input" placeholder="Type your message..." disabled>
+            <button id="send-btn" class="send-btn" onclick="sendMessage()" disabled>Send</button>
+        </div>
+    </div>
+
+    <script>
+        let selectedChatbot = null;
+        
+        // Load available chatbots
+        async function loadChatbots() {
+            try {
+                const response = await fetch('/api/system-chatbots/available');
+                const data = await response.json();
+                
+                const select = document.getElementById('chatbot-select');
+                select.innerHTML = '<option value="">Select a chatbot...</option>';
+                
+                if (data.success && data.chatbots) {
+                    data.chatbots.forEach(chatbot => {
+                        const option = document.createElement('option');
+                        option.value = chatbot.name;
+                        option.textContent = chatbot.display_name;
+                        option.dataset.description = chatbot.description;
+                        option.dataset.greeting = chatbot.greeting_message;
+                        select.appendChild(option);
+                    });
+                } else {
+                    select.innerHTML = '<option value="">Error loading chatbots</option>';
+                }
+            } catch (error) {
+                console.error('Error loading chatbots:', error);
+                document.getElementById('chatbot-select').innerHTML = '<option value="">Error loading chatbots</option>';
+            }
+        }
+        
+        // Handle chatbot selection
+        document.getElementById('chatbot-select').addEventListener('change', function() {
+            const select = this;
+            const selectedOption = select.options[select.selectedIndex];
+            
+            if (selectedOption.value) {
+                selectedChatbot = selectedOption.value;
+                
+                // Show greeting
+                const greetingArea = document.getElementById('greeting-area');
+                greetingArea.innerHTML = \`
+                    <div class="greeting">
+                        <strong>\${selectedOption.textContent}</strong><br>
+                        <em>\${selectedOption.dataset.description}</em><br><br>
+                        \${selectedOption.dataset.greeting}
+                    </div>
+                \`;
+                
+                // Clear chat and enable input
+                document.getElementById('chat-messages').innerHTML = '';
+                document.getElementById('message-input').disabled = false;
+                document.getElementById('send-btn').disabled = false;
+                document.getElementById('message-input').focus();
+                
+            } else {
+                selectedChatbot = null;
+                document.getElementById('greeting-area').innerHTML = '';
+                document.getElementById('message-input').disabled = true;
+                document.getElementById('send-btn').disabled = true;
+            }
+        });
+        
+        // Send message
+        async function sendMessage() {
+            const messageInput = document.getElementById('message-input');
+            const message = messageInput.value.trim();
+            
+            if (!message || !selectedChatbot) return;
+            
+            const chatMessages = document.getElementById('chat-messages');
+            const sendBtn = document.getElementById('send-btn');
+            
+            // Add user message
+            const userMessage = document.createElement('div');
+            userMessage.className = 'message user';
+            userMessage.innerHTML = \`<strong>You:</strong> \${message}\`;
+            chatMessages.appendChild(userMessage);
+            
+            // Clear input and disable sending
+            messageInput.value = '';
+            sendBtn.disabled = true;
+            messageInput.disabled = true;
+            
+            // Add loading message
+            const loadingMessage = document.createElement('div');
+            loadingMessage.className = 'message ai loading';
+            loadingMessage.innerHTML = '<strong>AI:</strong> Thinking...';
+            chatMessages.appendChild(loadingMessage);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+            
+            try {
+                const response = await fetch('/api/system-chatbots/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        chatbot_name: selectedChatbot,
+                        message: message
+                    })
+                });
+                
+                const data = await response.json();
+                
+                // Remove loading message
+                chatMessages.removeChild(loadingMessage);
+                
+                if (data.success) {
+                    // Add AI response
+                    const aiMessage = document.createElement('div');
+                    aiMessage.className = 'message ai';
+                    aiMessage.innerHTML = \`<strong>AI:</strong> \${data.response.replace(/\\n/g, '<br>')}\`;
+                    chatMessages.appendChild(aiMessage);
+                } else {
+                    // Add error message
+                    const errorMessage = document.createElement('div');
+                    errorMessage.className = 'message ai error';
+                    errorMessage.innerHTML = \`<strong>Error:</strong> \${data.error || 'Failed to get response'}\`;
+                    chatMessages.appendChild(errorMessage);
+                }
+                
+            } catch (error) {
+                // Remove loading message
+                chatMessages.removeChild(loadingMessage);
+                
+                console.error('Chat error:', error);
+                const errorMessage = document.createElement('div');
+                errorMessage.className = 'message ai error';
+                errorMessage.innerHTML = \`<strong>Error:</strong> Failed to send message. \${error.message}\`;
+                chatMessages.appendChild(errorMessage);
+            }
+            
+            // Re-enable input
+            sendBtn.disabled = false;
+            messageInput.disabled = false;
+            messageInput.focus();
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+        
+        // Handle Enter key in input
+        document.getElementById('message-input').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+        
+        // Load chatbots on page load
+        window.addEventListener('load', loadChatbots);
+    </script>
+</body>
+</html>
