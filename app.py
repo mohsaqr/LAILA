@@ -8,7 +8,7 @@ import sqlite3
 import pandas as pd
 import openai
 import google.generativeai as genai
-from config import get_ai_configuration, LOGIN_TEMPLATE, DATA_FILE
+from config import get_ai_configuration, LOGIN_TEMPLATE, CHAT_SYSTEM_PROMPT, load_bias_analysis_prompt
 from API_Settings import GOOGLE_API_KEY, OPENAI_API_KEY, DEFAULT_AI_SERVICE, DEFAULT_GOOGLE_MODEL, DEFAULT_OPENAI_MODEL, is_service_available
 import bcrypt
 import uuid
