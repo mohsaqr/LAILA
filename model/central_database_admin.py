@@ -366,6 +366,7 @@ class CentralDatabase:
                 'last_login': user[5]
             }
         return None
+
     
     def update_user_last_login(self, email):
         """Update user's last login time"""

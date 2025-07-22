@@ -20,6 +20,7 @@ import time
 import traceback
 import sys
 import csv
+import pandas as pd
 
 
 
@@ -65,31 +66,7 @@ def log_chat_interaction(user_id, chat_type, message_type, content, context_data
             essential_context = " | ".join(context_items)
 
         # Get user database ID from email
-        user_db_id = None
-        try:
-            from model.central_database_admin import CentralDatabase
-            db = CentralDatabase()
-            user_info = db.get_user_by_email(user_id)
-            if user_info:
-                user_db_id = user_info['id']
-                print(f"✅ Found user {user_id} with DB ID: {user_db_id}")
-            else:
-                print(f"⚠️  User not found in database: {user_id}")
-        except Exception as e:
-            print(f"❌ Error getting user ID for {user_id}: {e}")
-            # Fallback: try to get user ID directly
-            try:
-                conn_user = sqlite3.connect('db/laila_central.db')
-                cursor_user = conn_user.cursor()
-                cursor_user.execute("SELECT id FROM users WHERE email = ?", (user_id,))
-                result = cursor_user.fetchone()
-                if result:
-                    user_db_id = result[0]
-                    print(f"✅ Fallback: Found user {user_id} with DB ID: {user_db_id}")
-                conn_user.close()
-            except Exception as e2:
-                print(f"❌ Fallback also failed: {e2}")
-
+        
         # Prepare data for database
         module = chat_type.replace('_chat', '').replace('_', ' ').title()
         sender = 'User' if message_type == 'user_input' else 'AI'
@@ -113,7 +90,7 @@ def log_chat_interaction(user_id, chat_type, message_type, content, context_data
             INSERT INTO chat_logs 
             (user_id, session_id, timestamp, module, sender, turn, message, ai_model, response_time_sec, context)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ''', (user_db_id, chat_id, timestamp, module, sender, turn, message, ai_model_used, response_time, context))
+        ''', (user_id, chat_id, timestamp, module, sender, turn, message, ai_model_used, response_time, context))
         
         conn.commit()
         conn.close()
@@ -162,17 +139,17 @@ class User(UserMixin):
         return str(self.id)
 
 @login_manager.user_loader
-def load_user(user_id):
+def load_user(id):
     try:
-        conn = sqlite3.connect('db/laila_user.db')
+        conn = sqlite3.connect('db/laila_central.db')
         cursor = conn.cursor()
-        cursor.execute('SELECT fullname, email, is_admin FROM users WHERE email = ?', (user_id,))
+        cursor.execute('SELECT id, fullname, email, is_admin, is_confirmed FROM users WHERE id = ?', (id,))
         user_data = cursor.fetchone()
         conn.close()
-        
+        print(user_data)
         if user_data:
-            fullname, email, is_admin = user_data
-            return User(email, fullname, email, bool(is_admin))
+            id, fullname, email, is_admin, is_confirmed = user_data
+            return User(id, fullname, email, bool(is_admin), bool(is_confirmed))
     except Exception as e:
         print(f"Error loading user: {e}")
     return None
@@ -221,9 +198,9 @@ def login():
         
         # Check if user exists in database
         try:
-            conn = sqlite3.connect('db/laila_user.db')
+            conn = sqlite3.connect('db/laila_central.db')
             cursor = conn.cursor()
-            cursor.execute('SELECT fullname, email, password_hash, is_confirmed FROM users WHERE email = ?', (email,))
+            cursor.execute('SELECT id, fullname, email, password_hash, is_confirmed FROM users WHERE email = ?', (email,))
             user = cursor.fetchone()
             
             if action == 'register':
@@ -272,7 +249,7 @@ def login():
                                                 email=email)
                 
                 # Check password
-                fullname, email_db, hashed_password, is_confirmed = user
+                id, fullname, email_db, hashed_password, is_confirmed = user
                 if is_confirmed == False:
                     return render_template_string(LOGIN_TEMPLATE, 
                                                 error="Your account has not been confirmed yet.",
@@ -293,9 +270,8 @@ def login():
                     except sqlite3.OperationalError as e:
                         print(f"⚠️  Warning: Could not update last_login: {e}")
                         # Continue with login even if last_login update fails
-                    conn.close()
-                    
-                    user_obj = load_user(email)
+                    print(email)
+                    user_obj = load_user(id)
                     login_user(user_obj, remember=remember_me)
                     session.permanent = True
                     
@@ -346,37 +322,6 @@ def log_user_interaction(user_id, interaction_type=None, page=None, action=None,
         # Use action as interaction_type if provided (for backwards compatibility)
         actual_interaction_type = action if action else interaction_type
         
-        # Get user database ID from email (users are in laila_user.db, need to sync to central)
-        user_db_id = None
-        try:
-            # First check laila_central.db
-            conn_central = sqlite3.connect('db/laila_central.db')
-            cursor_central = conn_central.cursor()
-            cursor_central.execute("SELECT id FROM users WHERE email = ?", (user_id,))
-            result = cursor_central.fetchone()
-            if result:
-                user_db_id = result[0]
-            else:
-                # If not found, try to sync from laila_user.db
-                conn_user = sqlite3.connect('db/laila_user.db')
-                cursor_user = conn_user.cursor()
-                cursor_user.execute("SELECT id, fullname, email, is_admin FROM users WHERE email = ?", (user_id,))
-                user_data = cursor_user.fetchone()
-                if user_data:
-                    uid, fullname, email, is_admin = user_data
-                    # Insert into central database
-                    cursor_central.execute("""
-                        INSERT OR IGNORE INTO users (id, fullname, email, is_admin, created_at) 
-                        VALUES (?, ?, ?, ?, datetime('now'))
-                    """, (uid, fullname, email, is_admin))
-                    conn_central.commit()
-                    user_db_id = uid
-                    print(f"✅ Synced user {email} to central database with ID {uid}")
-                conn_user.close()
-            conn_central.close()
-        except Exception as e:
-            print(f"⚠️  Could not get user ID for {user_id}: {e}")
-        
         # Save to database
         conn = sqlite3.connect('db/laila_central.db')
         cursor = conn.cursor()
@@ -388,7 +333,7 @@ def log_user_interaction(user_id, interaction_type=None, page=None, action=None,
             INSERT INTO user_interactions 
             (user_id, interaction_type, page, action, element_id, element_type, element_value, timestamp, additional_data)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ''', (user_db_id, actual_interaction_type, page, action, element_id, element_type, element_value, timestamp, additional_data_str))
+        ''', (user_id, actual_interaction_type, page, action, element_id, element_type, element_value, timestamp, additional_data_str))
         
         conn.commit()
         conn.close()
@@ -690,7 +635,8 @@ def save_user_settings():
         
         # Prepare settings data
         settings_data = {
-            'user_id': current_user.email,
+            'user_id': current_user.id,
+            'user_email': current_user.email,
             'ai_service': data.get('ai_service', DEFAULT_AI_SERVICE),
             'ai_model': data.get('ai_model', DEFAULT_OPENAI_MODEL if DEFAULT_AI_SERVICE == 'openai' else DEFAULT_GOOGLE_MODEL),
             'use_custom_keys': data.get('use_custom_keys', False),
@@ -714,7 +660,7 @@ def save_user_settings():
         settings_df.to_csv(settings_file, index=False)
         
         # Log the action
-        log_interaction('settings_update', 'user_settings', 'save_settings', details=settings_data)
+        # log_interaction('settings_update', 'user_settings', 'save_settings', details=settings_data)
         
         return jsonify({'success': True, 'message': 'Settings saved successfully'})
         
@@ -773,7 +719,7 @@ def session_status():
 @login_required
 def get_field_help(field_name):
     """Get explanation and example for a specific field"""
-    log_interaction('tool_usage', 'get_field_help', 'get_field_help', details={'field_name': field_name})
+    # log_interaction('tool_usage', 'get_field_help', 'get_field_help', details={'field_name': field_name})
     explanation = get_field_explanation(field_name)
     return jsonify(explanation)
 
@@ -782,7 +728,7 @@ def get_field_help(field_name):
 @login_required
 def get_sample_data(field_name):
     """Get random sample data for a specific field"""
-    log_interaction('tool_usage', 'get_sample_data', 'get_sample_data', details={'field_name': field_name})
+    # log_interaction('tool_usage', 'get_sample_data', 'get_sample_data', details={'field_name': field_name})
     sample = get_random_example(field_name)
     return jsonify({'sample': sample})
 
@@ -927,12 +873,12 @@ def auto_fill_form():
 
 # --- Endpoint: Log User Interaction ---
 @app.route('/api/log-interaction', methods=['POST'])
+@login_required
 @require_true_admin
 def log_interaction_endpoint():
     """Log user interactions to CSV"""
     data = request.json
-    user_id = current_user.email if current_user.is_authenticated else 'anonymous'
-    
+    user_id = current_user.id if current_user.is_authenticated else 'anonymous'
     # Log detailed user interaction
     log_user_interaction(
         user_id=user_id,
@@ -954,11 +900,12 @@ def log_interaction_endpoint():
 
 # --- Endpoint: Log Chat Interaction ---
 @app.route('/api/log-chat', methods=['POST'])
+@login_required
 @require_true_admin
 def log_chat_endpoint():
     """Log chat interactions to CSV"""
     data = request.json
-    user_id = current_user.email if current_user.is_authenticated else 'anonymous'
+    user_id = current_user.id if current_user.is_authenticated else 'anonymous'
     
     # Log chat interaction
     log_chat_interaction(
@@ -976,6 +923,7 @@ def log_chat_endpoint():
 
 # --- Endpoint: Get User Interactions ---
 @app.route('/api/user-interactions', methods=['GET'])
+@login_required
 @require_true_admin
 def get_user_interactions():
     """Get user interaction logs from database"""
@@ -1045,6 +993,7 @@ def get_user_interactions():
 
 # --- Endpoint: Get Chat Logs ---
 @app.route('/api/chat-logs', methods=['GET'])
+@login_required
 @require_true_admin
 def get_chat_logs():
     """Get chat logs from database"""
@@ -1095,6 +1044,7 @@ def get_chat_logs():
 
 # --- Endpoint: Get Data Analysis Logs ---
 @app.route('/api/data-analysis-logs', methods=['GET'])
+@login_required
 @require_true_admin
 def get_data_analysis_logs():
     """Get data analysis logs from database"""
@@ -1142,6 +1092,7 @@ def get_data_analysis_logs():
 
 # --- Endpoint: Get Logs Statistics ---
 @app.route('/api/logs-statistics', methods=['GET'])
+@login_required
 @require_true_admin
 def get_logs_statistics():
     """Get statistics from database"""
@@ -1226,6 +1177,7 @@ def submit():
 
 # --- Endpoint: Admin CSV Export ---
 @app.route('/api/export', methods=['GET'])
+@login_required
 @require_true_admin
 def export_csv():
     if not os.path.exists(DATA_FILE):
@@ -1246,7 +1198,7 @@ def vignette_chat():
     # Log user input for vignette chat
     start_time = time.time()
     log_chat_interaction(
-        user_id=current_user.email,
+        user_id=current_user.id,
         chat_type='vignette_chat',
         message_type='user_input',
         content=user_message,
@@ -1266,7 +1218,7 @@ def vignette_chat():
         
         # Log AI response
         log_chat_interaction(
-            user_id=current_user.email,
+            user_id=current_user.id,
             chat_type='vignette_chat',
             message_type='ai_response',
             content=result,
@@ -1302,7 +1254,7 @@ def student_bias_analysis():
     # Log user input for student bias analysis
     start_time = time.time()
     log_chat_interaction(
-        user_id=current_user.email,
+        user_id=current_user.id,
         chat_type='student_bias_analysis',
         message_type='user_input',
         content=vignette,
@@ -1329,7 +1281,7 @@ def student_bias_analysis():
         
         # Log AI response
         log_chat_interaction(
-            user_id=current_user.email,
+            user_id=current_user.id,
             chat_type='student_bias_analysis',
             message_type='ai_response',
             content=result,
@@ -1366,7 +1318,7 @@ def prompt_engineering():
     # Log user input for prompt engineering
     start_time = time.time()
     log_chat_interaction(
-        user_id=current_user.email,
+        user_id=current_user.id,
         chat_type='prompt_engineering',
         message_type='user_input',
         content=user_message,
@@ -1397,7 +1349,7 @@ def prompt_engineering():
         
         # Log AI response
         log_chat_interaction(
-            user_id=current_user.email,
+            user_id=current_user.id,
             chat_type='prompt_engineering',
             message_type='ai_response',
             content=result,
@@ -1473,7 +1425,7 @@ def prompt_discussion():
     # Log user input for prompt discussion
     start_time = time.time()
     log_chat_interaction(
-        user_id=current_user.email,
+        user_id=current_user.id,
         chat_type='prompt_discussion',
         message_type='user_input',
         content=user_message,
@@ -1498,7 +1450,7 @@ def prompt_discussion():
         
         # Log AI response
         log_chat_interaction(
-            user_id=current_user.email,
+            user_id=current_user.id,
             chat_type='prompt_discussion',
             message_type='ai_response',
             content=result,
@@ -1553,7 +1505,7 @@ def analyze_data():
     # Log user input for data analysis
     start_time = time.time()
     log_chat_interaction(
-        user_id=current_user.email,
+        user_id=current_user.id,
         chat_type='data_analysis',
         message_type='user_input',
         content=data_content,
@@ -1588,7 +1540,7 @@ def analyze_data():
         
         # Log AI response
         log_chat_interaction(
-            user_id=current_user.email,
+            user_id=current_user.id,
             chat_type='data_analysis',
             message_type='ai_response',
             content=result,
@@ -1651,8 +1603,8 @@ def interpret_data():
     
     # Log user input for data interpretation
     start_time = time.time()
-    user_email = current_user.email if current_user.is_authenticated else 'anonymous'
-    log_user_interaction(user_email, 'data_interpretation_request', 'data_analyzer', additional_data={
+    user_id = current_user.id if current_user.is_authenticated else 'anonymous'
+    log_user_interaction(user_id, 'data_interpretation_request', 'data_analyzer', additional_data={
         'data_type': data_type,
         'analysis_type': analysis_type,
         'audience_level': audience_level,
@@ -1681,7 +1633,7 @@ def interpret_data():
         
         # Log AI response
         log_chat_interaction(
-            user_id=user_email,
+            user_id=user_id,
             chat_type='data_interpreter',
             message_type='ai_response',
             content=result,
@@ -1700,7 +1652,7 @@ def interpret_data():
         
         # Log data analysis operation
         log_data_analysis(
-            user_id=user_email,
+            user_id=user_id,
             analysis_type=f'data_interpretation_{data_type}',
             input_data=data_content,
             generated_data=result,
@@ -1747,9 +1699,9 @@ def interpret_chat():
     
     # Log user chat message
     start_time = time.time()
-    user_email = current_user.email if current_user.is_authenticated else 'anonymous'
+    user_email = current_user.id if current_user.is_authenticated else 'anonymous'
     log_chat_interaction(
-        user_id=user_email,
+        user_id=user_id,
         chat_type='data_interpreter_chat',
         message_type='user_input',
         content=user_message,
@@ -1847,9 +1799,9 @@ def educational_chat():
     
     # Log user chat message
     start_time = time.time()
-    user_email = current_user.email if current_user.is_authenticated else 'anonymous'
+    user_id = current_user.id if current_user.is_authenticated else 'anonymous'
     log_chat_interaction(
-        user_id=user_email,
+        user_id=user_id,
         chat_type='educational_chat',
         message_type='user_input',
         content=user_message,
@@ -1902,7 +1854,7 @@ def educational_chat():
         
         # Log AI chat response
         log_chat_interaction(
-            user_id=user_email,
+            user_id=user_id,
             chat_type='educational_chat',
             message_type='ai_response',
             content=result,
@@ -1939,7 +1891,7 @@ def bias_analysis():
     api_key = data.get('api_key')
     service = data.get('service', AI_SERVICE)
     
-    log_interaction('user_input', 'bias_analysis', 'request_bias_analysis', details={'vignette': vignette})
+    # log_interaction('user_input', 'bias_analysis', 'request_bias_analysis', details={'vignette': vignette})
     # Only return mock for explicit test requests
     if api_key == 'test' or api_key == 'TEST':
         # Return mock analysis for testing
@@ -1959,7 +1911,7 @@ def bias_analysis():
             
             response = model.generate_content(prompt)
             result = response.text
-            log_interaction('ai_response', 'bias_analysis', 'bias_analysis_response', details={'vignette': vignette}, ai_model=model_name, ai_response=result)
+            # log_interaction('ai_response', 'bias_analysis', 'bias_analysis_response', details={'vignette': vignette}, ai_model=model_name, ai_response=result)
             return jsonify({'bias_analysis': result, 'service': 'google'})
             
         elif service == 'openai':
@@ -1974,7 +1926,7 @@ def bias_analysis():
                 ]
             )
             result = response.choices[0].message.content
-            log_interaction('ai_response', 'bias_analysis', 'bias_analysis_response', details={'vignette': vignette}, ai_model='gpt-3.5-turbo', ai_response=result)
+            # log_interaction('ai_response', 'bias_analysis', 'bias_analysis_response', details={'vignette': vignette}, ai_model='gpt-3.5-turbo', ai_response=result)
             return jsonify({'bias_analysis': result, 'service': 'openai'})
             
         else:
@@ -2022,6 +1974,7 @@ def get_system_settings():
 
 # --- Endpoint: Update System AI Settings (Admin Only) ---
 @app.route('/api/system-settings', methods=['POST'])
+@login_required
 @require_true_admin
 def update_system_settings():
     data = request.json
@@ -2032,6 +1985,7 @@ def update_system_settings():
 
 # --- Endpoints: Central Database Management (Admin) ---
 @app.route('/api/admin/database-stats')
+@login_required
 @require_true_admin
 def database_stats():
     """Get database statistics for admin interface"""
@@ -2051,6 +2005,7 @@ def database_stats():
         }), 500
 
 @app.route('/api/admin/export-chat-logs', methods=['POST'])
+@login_required
 @require_true_admin
 def export_chat_logs():
     """Export chat logs to CSV with filtering options"""
@@ -2103,6 +2058,7 @@ def export_chat_logs():
         }), 500
 
 @app.route('/api/admin/export-users', methods=['POST'])
+@login_required
 @require_true_admin
 def export_users():
     """Export users data to CSV"""
@@ -2126,6 +2082,7 @@ def export_users():
         }), 500
 
 @app.route('/api/admin/export-interactions', methods=['POST'])
+@login_required
 @require_true_admin
 def export_interactions():
     """Export user interactions to CSV"""
@@ -2158,6 +2115,7 @@ def export_interactions():
         }), 500
 
 @app.route('/api/admin/export-submissions', methods=['POST'])
+@login_required
 @require_true_admin
 def export_submissions():
     """Export user submissions to CSV"""
@@ -2189,7 +2147,9 @@ def export_submissions():
             'error': str(e)
         }), 500
 
+
 @app.route('/api/admin/download-export/<filename>')
+@login_required
 @require_true_admin
 def download_export(filename):
     """Download exported CSV file"""
@@ -2216,6 +2176,7 @@ def download_export(filename):
 
 # --- Endpoints: Custom Chatbot Management (Admin) ---
 @app.route('/api/admin/chatbots')
+@login_required
 @require_true_admin
 def get_chatbots():
     """Get all custom chatbots for admin management"""
@@ -2272,6 +2233,7 @@ def get_chatbots():
         }), 500
 
 @app.route('/api/admin/chatbot-stats')
+@login_required
 @require_true_admin
 def get_chatbot_stats():
     """Get chatbot system statistics"""
@@ -2328,6 +2290,7 @@ def get_chatbot_stats():
         }), 500
 
 @app.route('/api/admin/chatbots/create', methods=['POST'])
+@login_required
 @require_true_admin
 def create_chatbot():
     """Create a new custom chatbot"""
@@ -2376,6 +2339,7 @@ def create_chatbot():
         }), 500
 
 @app.route('/api/admin/chatbots/update', methods=['POST'])
+@login_required
 @require_true_admin
 def update_chatbot():
     """Update an existing custom chatbot"""
@@ -2416,6 +2380,7 @@ def update_chatbot():
         }), 500
 
 @app.route('/api/admin/chatbots/toggle', methods=['POST'])
+@login_required
 @require_true_admin
 def toggle_chatbot():
     """Toggle chatbot active status"""
@@ -2448,6 +2413,7 @@ def toggle_chatbot():
         }), 500
 
 @app.route('/api/admin/chatbots/delete', methods=['POST'])
+@login_required
 @require_true_admin
 def delete_chatbot():
     """Delete a custom chatbot"""
@@ -2482,11 +2448,12 @@ def delete_chatbot():
 
 # --- Admin User Management Functions ---
 @app.route('/api/admin/users')
+@login_required
 @require_true_admin
 def admin_get_users():
     """Get all users for admin management"""
     try:
-        conn = sqlite3.connect('db/laila_user.db')
+        conn = sqlite3.connect('db/laila_central.db')
         cursor = conn.cursor()
         
         cursor.execute('''
@@ -2516,6 +2483,7 @@ def admin_get_users():
     
 # --- Endpoint: Confirm user ---
 @app.route('/api/admin/users/confirm', methods=['POST'])
+@login_required
 @require_true_admin
 def confirm_user():
     """Confirm a user's email address (admin only)"""
@@ -2527,7 +2495,7 @@ def confirm_user():
             return jsonify({'error': 'Email is required'}), 400
         email = email.strip().lower()
         # Check if user exists
-        conn = sqlite3.connect('db/laila_user.db')
+        conn = sqlite3.connect('db/laila_central.db')
         cursor = conn.cursor()
         
         cursor.execute('SELECT email, fullname FROM users WHERE email = ?', (email,))
@@ -2557,6 +2525,7 @@ def confirm_user():
         return jsonify({'error': 'Failed to reset user'}), 500
 
 @app.route('/api/admin/reset-password', methods=['POST'])
+@login_required
 @require_true_admin
 def admin_reset_password():
     """Reset a user's password (admin only)"""
@@ -2572,7 +2541,7 @@ def admin_reset_password():
             return jsonify({'error': 'Password must be at least 6 characters long'}), 400
         
         # Check if user exists
-        conn = sqlite3.connect('db/laila_user.db')
+        conn = sqlite3.connect('db/laila_central.db')
         cursor = conn.cursor()
         
         cursor.execute('SELECT email, fullname FROM users WHERE email = ?', (email,))
@@ -2814,11 +2783,13 @@ def chatbot_feedback():
 
 # --- Serve Admin and User Pages ---
 @app.route('/chatbot-admin')
+@login_required
 @require_true_admin
 def chatbot_admin():
     return send_file('views/chatbot-admin.html')
 
 @app.route('/custom-chatbots')
+@login_required
 @require_true_admin
 def custom_chatbots():
     return send_file('views/custom-chatbots.html')
@@ -2913,11 +2884,11 @@ def system_chatbot_chat():
         response_time = (time.time() - start_time) * 1000  # Convert to milliseconds
         
         # Log the chat interaction
-        user_email = current_user.email if current_user.is_authenticated else 'anonymous'
+        user_id = current_user.id if current_user.is_authenticated else 'anonymous'
         
         # Store to user database chat logs
         try:
-            user_conn = sqlite3.connect('db/laila_user.db')
+            user_conn = sqlite3.connect('db/laila_central.db')
             user_cursor = user_conn.cursor()
             
             session_id = f"system_chat_{chatbot_name}_{int(time.time())}"
@@ -2927,14 +2898,14 @@ def system_chatbot_chat():
                 INSERT INTO chat_logs 
                 (user_id, session_id, timestamp, module, sender, turn, message, ai_model, response_time_sec, context)
                 VALUES ((SELECT id FROM users WHERE email = ?), ?, datetime('now'), ?, 'User', 1, ?, ?, ?, ?)
-            ''', (user_email, session_id, f'system_chatbot_{chatbot_name}', user_message, model_used, response_time/1000, chatbot_name))
+            ''', (user_id, session_id, f'system_chatbot_{chatbot_name}', user_message, model_used, response_time/1000, chatbot_name))
             
             # Log AI response
             user_cursor.execute('''
                 INSERT INTO chat_logs 
                 (user_id, session_id, timestamp, module, sender, turn, message, ai_model, response_time_sec, context)
                 VALUES ((SELECT id FROM users WHERE email = ?), ?, datetime('now'), ?, 'AI', 2, ?, ?, ?, ?)
-            ''', (user_email, session_id, f'system_chatbot_{chatbot_name}', ai_response, model_used, response_time/1000, chatbot_name))
+            ''', (user_id, session_id, f'system_chatbot_{chatbot_name}', ai_response, model_used, response_time/1000, chatbot_name))
             
             user_conn.commit()
             user_conn.close()

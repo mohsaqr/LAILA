@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="static/css/unified-styles.css?v=1.1">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <script src="static/js/navigation.js"></script>
+    <script src="https://unpkg.com/showdown/dist/showdown.min.js"></script>
     <style>
         .chat-container {
             max-width: 1000px;
@@ -443,16 +444,19 @@
         let chatConfig = null;
         let chatHistory = [];
         let userId = localStorage.getItem('userId');
-        
+        var converter;
+
         if (!userId) {
             userId = 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
             localStorage.setItem('userId', userId);
         }
-
+        
         // Initialize the chat interface
         document.addEventListener('DOMContentLoaded', function() {
+            converter = new showdown.Converter();
             initializeChat();
             setupEventListeners();
+            
         });
 
         function initializeChat() {
@@ -491,6 +495,7 @@
                 console.error('Configuration error:', error);
                 showError('Invalid configuration data. Please reconfigure your chatbot.');
             }
+            
         }
 
         function displayConfiguration() {
@@ -546,7 +551,8 @@
             message.className = `message ${type}`;
             
             const messageContent = document.createElement('div');
-            messageContent.textContent = content;
+            const htmlText = converter.makeHtml(content);
+            messageContent.innerHTML = htmlText;
             message.appendChild(messageContent);
             
             const messageTime = document.createElement('div');

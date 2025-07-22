@@ -28,6 +28,7 @@ def create_central_database():
             email TEXT UNIQUE NOT NULL,
             password_hash TEXT NOT NULL,
             is_admin BOOLEAN DEFAULT FALSE,
+            is_confirmed BOOLEAN DEFAULT FALSE,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             last_login DATETIME,
             is_active BOOLEAN DEFAULT TRUE
