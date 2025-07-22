@@ -21,7 +21,9 @@ import traceback
 import sys
 import csv
 import pandas as pd
+from dotenv import load_dotenv
 
+load_dotenv()
 
 
 # Enhanced logging functions
@@ -110,10 +112,8 @@ def initialize_session():
     if 'chat_id' not in session:
         session['chat_id'] = str(uuid.uuid4())
 
-
-
 app = Flask(__name__, static_folder='.', static_url_path='')
-app.secret_key = os.urandom(24)
+app.secret_key =  os.getenv('SECRET_KEY') or os.urandom(24)
 app.config['PERMANENT_SESSION_LIFETIME'] = 604800  # 7 days (7 * 24 * 60 * 60)
 app.config['SESSION_COOKIE_SECURE'] = False  # Set to True in production with HTTPS
 app.config['SESSION_COOKIE_HTTPONLY'] = True
