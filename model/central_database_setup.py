@@ -14,7 +14,7 @@ import bcrypt
 def create_central_database():
     """Create comprehensive SQLite database for all LAILA data"""
     
-    db_path = 'laila_central.db'
+    db_path = 'db/laila_central.db'
     
     # Create connection
     conn = sqlite3.connect(db_path)
@@ -193,7 +193,7 @@ def create_central_database():
 def migrate_csv_data():
     """Migrate all existing CSV data to central database"""
     
-    conn = sqlite3.connect('laila_central.db')
+    conn = sqlite3.connect('db/laila_central.db')
     migrated_counts = {}
     
     # 1. Migrate Users
@@ -378,7 +378,7 @@ def migrate_csv_data():
 def verify_migration():
     """Verify the migration was successful"""
     
-    conn = sqlite3.connect('laila_central.db')
+    conn = sqlite3.connect('db/laila_central.db')
     cursor = conn.cursor()
     
     # Check all tables
@@ -401,7 +401,7 @@ def verify_migration():
     print(f"  {'TOTAL':20}: {total_records:>6} records")
     
     # Check database size
-    db_size = os.path.getsize('laila_central.db')
+    db_size = os.path.getsize('db/laila_central.db')
     print(f"  {'Database Size':20}: {db_size:>6} bytes")
     
     # Show sample users

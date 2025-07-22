@@ -6,7 +6,7 @@ import json
 import bcrypt
 
 def create_system_database():
-    conn = sqlite3.connect('laila_system.db')
+    conn = sqlite3.connect('db/laila_system.db')
     cursor = conn.cursor()
     
     # System settings
@@ -105,7 +105,7 @@ When analyzing content for bias, be thorough but balanced. Explain your reasonin
     print("✅ System database created")
 
 def create_user_database():
-    conn = sqlite3.connect('laila_user.db')
+    conn = sqlite3.connect('db/laila_user.db')
     cursor = conn.cursor()
     
     # Users table

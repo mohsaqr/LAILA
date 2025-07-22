@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bias Research Platform</title>
-    <link rel="stylesheet" href="styles.css?v=1.1">
     <link rel="stylesheet" href="unified-styles.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <script src="navigation.js"></script>
@@ -339,11 +338,11 @@
             background: #fff;
             border: 2px solid #3498db;
             border-radius: 8px;
-            padding: 8px 15px;
+            /* padding: 8px 15px; */
             margin: 5px;
             font-weight: bold;
             color: #2980b9;
-            min-width: 120px;
+            min-width: 100px;
             text-align: center;
             cursor: pointer;
             transition: all 0.3s ease;
@@ -394,10 +393,7 @@
                 <div class="option-description">Generate a story with minimal inputs</div>
             </button>
             
-            <button class="option-button tertiary" onclick="showComparisonOptions()">
-                <i class="fas fa-balance-scale"></i> Generate Comparison Stories
-                <div class="option-description">Create contrasting vignettes for bias analysis</div>
-            </button>
+
             
             
             <!-- Quick Story Form -->
@@ -464,6 +460,10 @@
                     </div>
                 </div>
             </div>
+            <button class="option-button tertiary" onclick="showComparisonOptions()">
+                <i class="fas fa-balance-scale"></i> Generate Comparison Stories
+                <div class="option-description">Create contrasting vignettes for bias analysis</div>
+            </button>
         </div>
         
         <!-- Compare Stories Panel -->

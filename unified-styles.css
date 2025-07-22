@@ -130,6 +130,7 @@ body {
 .nav-button.admin-btn {
     border-color: var(--accent-color);
     color: var(--accent-color);
+    color: white;
 }
 
 .nav-button.admin-btn:hover {

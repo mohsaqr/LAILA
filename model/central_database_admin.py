@@ -12,7 +12,7 @@ import os
 class CentralDatabase:
     """Class for managing central database operations"""
     
-    def __init__(self, db_path='laila_central.db'):
+    def __init__(self, db_path='db/laila_central.db'):
         self.db_path = db_path
         self.ensure_database_exists()
     

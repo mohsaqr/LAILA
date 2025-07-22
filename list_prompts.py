@@ -24,15 +24,15 @@ def list_all_prompts():
             # Find corresponding text file
             filename = None
             if prompt_name == 'bias_analyst':
-                filename = 'bias-analysis-system-prompt.txt'
+                filename = 'prompts/bias-analysis-system-prompt.txt'
             elif prompt_name == 'prompt_helper':
-                filename = 'prompt-helper-system-prompt.txt'
+                filename = 'prompts/prompt-helper-system-prompt.txt'
             elif prompt_name == 'data_interpreter':
-                filename = 'interpret-data-system-prompt.txt'
+                filename = 'prompts/interpret-data-system-prompt.txt'
             elif prompt_name == 'research_helper':
-                filename = 'research-helper-system-prompt.txt'
+                filename = 'prompts/research-helper-system-prompt.txt'
             elif prompt_name == 'welcome_assistant':
-                filename = 'welcome-assistant-system-prompt.txt'
+                filename = 'prompts/welcome-assistant-system-prompt.txt'
             
             if filename and os.path.exists(filename):
                 file_size = os.path.getsize(filename)

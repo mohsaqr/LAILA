@@ -8,7 +8,7 @@ import sqlite3
 import openai
 import google.generativeai as genai
 from config import get_ai_configuration, LOGIN_TEMPLATE, ADMIN_ACCESS_DENIED_TEMPLATE, CHAT_SYSTEM_PROMPT, load_bias_analysis_prompt, load_system_prompt, list_available_prompts
-from API_Settings import GOOGLE_API_KEY, OPENAI_API_KEY, DEFAULT_AI_SERVICE, DEFAULT_GOOGLE_MODEL, DEFAULT_OPENAI_MODEL, is_service_available
+from API_Settings import  DEFAULT_AI_SERVICE, DEFAULT_GOOGLE_MODEL, DEFAULT_OPENAI_MODEL, is_service_available, get_api_key
 import bcrypt
 import uuid
 import logging
@@ -66,7 +66,7 @@ def log_chat_interaction(user_id, chat_type, message_type, content, context_data
         # Get user database ID from email
         user_db_id = None
         try:
-            from central_database_admin import CentralDatabase
+            from model.central_database_admin import CentralDatabase
             db = CentralDatabase()
             user_info = db.get_user_by_email(user_id)
             if user_info:
@@ -78,7 +78,7 @@ def log_chat_interaction(user_id, chat_type, message_type, content, context_data
             print(f"❌ Error getting user ID for {user_id}: {e}")
             # Fallback: try to get user ID directly
             try:
-                conn_user = sqlite3.connect('laila_central.db')
+                conn_user = sqlite3.connect('db/laila_central.db')
                 cursor_user = conn_user.cursor()
                 cursor_user.execute("SELECT id FROM users WHERE email = ?", (user_id,))
                 result = cursor_user.fetchone()
@@ -99,11 +99,11 @@ def log_chat_interaction(user_id, chat_type, message_type, content, context_data
         context = essential_context
 
         # Save to Central SQLite database
-        db_path = 'laila_central.db'
+        db_path = 'db/laila_central.db'
         
         # Ensure database exists
         if not os.path.exists(db_path):
-            from central_database_setup import create_central_database
+            from model.central_database_setup import create_central_database
             create_central_database()
         
         # Insert into central database
@@ -162,7 +162,7 @@ class User(UserMixin):
 @login_manager.user_loader
 def load_user(user_id):
     try:
-        conn = sqlite3.connect('laila_user.db')
+        conn = sqlite3.connect('db/laila_user.db')
         cursor = conn.cursor()
         cursor.execute('SELECT fullname, email, is_admin FROM users WHERE email = ?', (user_id,))
         user_data = cursor.fetchone()
@@ -176,16 +176,12 @@ def load_user(user_id):
     return None
 
 # Import unified API settings with priority fallback
-from API_Settings import (
-    get_api_key, get_default_model, is_service_available, get_fallback_service, get_ai_config,
-    GOOGLE_API_KEY, DEFAULT_AI_SERVICE, DEFAULT_GOOGLE_MODEL, DEFAULT_OPENAI_MODEL
-)
+
 import google.generativeai as genai
 from openai import OpenAI
 
 # Configure Google AI with API key
-if GOOGLE_API_KEY:
-    genai.configure(api_key=GOOGLE_API_KEY)
+genai.configure(api_key=get_api_key('google'))
 
 # --- User Authentication ---
 
@@ -223,7 +219,7 @@ def login():
         
         # Check if user exists in database
         try:
-            conn = sqlite3.connect('laila_user.db')
+            conn = sqlite3.connect('db/laila_user.db')
             cursor = conn.cursor()
             cursor.execute('SELECT fullname, email, password_hash FROM users WHERE email = ?', (email,))
             user = cursor.fetchone()
@@ -349,7 +345,7 @@ def log_user_interaction(user_id, interaction_type=None, page=None, action=None,
         user_db_id = None
         try:
             # First check laila_central.db
-            conn_central = sqlite3.connect('laila_central.db')
+            conn_central = sqlite3.connect('db/laila_central.db')
             cursor_central = conn_central.cursor()
             cursor_central.execute("SELECT id FROM users WHERE email = ?", (user_id,))
             result = cursor_central.fetchone()
@@ -357,7 +353,7 @@ def log_user_interaction(user_id, interaction_type=None, page=None, action=None,
                 user_db_id = result[0]
             else:
                 # If not found, try to sync from laila_user.db
-                conn_user = sqlite3.connect('laila_user.db')
+                conn_user = sqlite3.connect('db/laila_user.db')
                 cursor_user = conn_user.cursor()
                 cursor_user.execute("SELECT id, fullname, email, is_admin FROM users WHERE email = ?", (user_id,))
                 user_data = cursor_user.fetchone()
@@ -377,7 +373,7 @@ def log_user_interaction(user_id, interaction_type=None, page=None, action=None,
             print(f"⚠️  Could not get user ID for {user_id}: {e}")
         
         # Save to database
-        conn = sqlite3.connect('laila_central.db')
+        conn = sqlite3.connect('db/laila_central.db')
         cursor = conn.cursor()
         
         # Convert additional_data to string if it's a dict
@@ -573,7 +569,7 @@ def test():
 def debug_data_status():
     """Debug endpoint to check data availability"""
     try:
-        conn = sqlite3.connect('laila_central.db')
+        conn = sqlite3.connect('db/laila_central.db')
         cursor = conn.cursor()
         
         # Count records
@@ -613,7 +609,7 @@ def debug_data_status():
 def debug_chat_logs_sample():
     """Debug endpoint to get sample chat logs (no auth required)"""
     try:
-        conn = sqlite3.connect('laila_central.db')
+        conn = sqlite3.connect('db/laila_central.db')
         cursor = conn.cursor()
         
         cursor.execute("""
@@ -665,11 +661,6 @@ def admin():
 @login_required
 def test_connection():
     return send_file('views/test-connection.html')
-
-@app.route('/chat')
-@login_required
-def chat():
-    return send_file('views/chat.html')
 
 @app.route('/story-form')
 @login_required
@@ -1057,7 +1048,7 @@ def get_user_interactions():
     """Get user interaction logs from database"""
     print(f"🔍 User interactions API called by user: {getattr(current_user, 'email', 'anonymous') if current_user.is_authenticated else 'not authenticated'}")
     try:
-        conn = sqlite3.connect('laila_central.db')
+        conn = sqlite3.connect('db/laila_central.db')
         cursor = conn.cursor()
         
         cursor.execute("""
@@ -1125,7 +1116,7 @@ def get_chat_logs():
     """Get chat logs from database"""
     print(f"🔍 Chat logs API called by user: {getattr(current_user, 'email', 'anonymous') if current_user.is_authenticated else 'not authenticated'}")
     try:
-        conn = sqlite3.connect('laila_central.db')
+        conn = sqlite3.connect('db/laila_central.db')
         cursor = conn.cursor()
         
         cursor.execute("""
@@ -1175,7 +1166,7 @@ def get_data_analysis_logs():
     """Get data analysis logs from database"""
     try:
         # For now, return data analysis entries from chat logs where module is 'Data Interpreter'
-        conn = sqlite3.connect('laila_central.db')
+        conn = sqlite3.connect('db/laila_central.db')
         cursor = conn.cursor()
         
         cursor.execute("""
@@ -1222,7 +1213,7 @@ def get_logs_statistics():
     """Get statistics from database"""
     try:
         stats = {}
-        conn = sqlite3.connect('laila_central.db')
+        conn = sqlite3.connect('db/laila_central.db')
         cursor = conn.cursor()
         
         # Total users
@@ -2108,7 +2099,7 @@ def update_system_settings():
 def database_stats():
     """Get database statistics for admin interface"""
     try:
-        from central_database_admin import CentralDatabase
+        from model.central_database_admin import CentralDatabase
         db = CentralDatabase()
         stats = db.get_database_statistics()
         
@@ -2127,7 +2118,7 @@ def database_stats():
 def export_chat_logs():
     """Export chat logs to CSV with filtering options"""
     try:
-        from central_database_admin import CentralDatabase
+        from model.central_database_admin import CentralDatabase
         
         data = request.json or {}
         date_from = data.get('date_from')
@@ -2139,7 +2130,7 @@ def export_chat_logs():
         if not date_from and not date_to:
             # Get earliest and latest timestamps from database
             db_temp = CentralDatabase()
-            conn = sqlite3.connect('laila_central.db')
+            conn = sqlite3.connect('db/laila_central.db')
             cursor = conn.cursor()
             try:
                 cursor.execute('SELECT MIN(timestamp), MAX(timestamp) FROM chat_logs')
@@ -2179,7 +2170,7 @@ def export_chat_logs():
 def export_users():
     """Export users data to CSV"""
     try:
-        from central_database_admin import CentralDatabase
+        from model.central_database_admin import CentralDatabase
         
         db = CentralDatabase()
         filename, count = db.export_users_data()
@@ -2202,7 +2193,7 @@ def export_users():
 def export_interactions():
     """Export user interactions to CSV"""
     try:
-        from central_database_admin import CentralDatabase
+        from model.central_database_admin import CentralDatabase
         
         data = request.json or {}
         date_from = data.get('date_from')
@@ -2234,7 +2225,7 @@ def export_interactions():
 def export_submissions():
     """Export user submissions to CSV"""
     try:
-        from central_database_admin import CentralDatabase
+        from model.central_database_admin import CentralDatabase
         
         data = request.json or {}
         date_from = data.get('date_from')
@@ -2293,7 +2284,7 @@ def download_export(filename):
 def get_chatbots():
     """Get all custom chatbots for admin management"""
     try:
-        conn = sqlite3.connect('laila_central.db')
+        conn = sqlite3.connect('db/laila_central.db')
         cursor = conn.cursor()
         
         cursor.execute('''
@@ -2350,7 +2341,7 @@ def get_chatbots():
 def get_chatbot_stats():
     """Get chatbot system statistics"""
     try:
-        conn = sqlite3.connect('laila_central.db')
+        conn = sqlite3.connect('db/laila_central.db')
         cursor = conn.cursor()
         
         # Combined stats query
@@ -2410,7 +2401,7 @@ def create_chatbot():
         data = request.json
         
         # Get current user ID
-        from central_database_admin import CentralDatabase
+        from model.central_database_admin import CentralDatabase
         db = CentralDatabase()
         user_info = db.get_user_by_email(current_user.email)
         user_id = user_info['id'] if user_info else None
@@ -2419,7 +2410,7 @@ def create_chatbot():
         import re
         internal_name = re.sub(r'[^a-zA-Z0-9_]', '_', data['display_name'].lower())
         
-        conn = sqlite3.connect('laila_central.db')
+        conn = sqlite3.connect('db/laila_central.db')
         cursor = conn.cursor()
         
         cursor.execute('''
@@ -2459,7 +2450,7 @@ def update_chatbot():
         data = request.json
         chatbot_id = data['id']
         
-        conn = sqlite3.connect('laila_central.db')
+        conn = sqlite3.connect('db/laila_central.db')
         cursor = conn.cursor()
         
         cursor.execute('''
@@ -2501,7 +2492,7 @@ def toggle_chatbot():
         chatbot_id = data['id']
         is_active = data['is_active']
         
-        conn = sqlite3.connect('laila_central.db')
+        conn = sqlite3.connect('db/laila_central.db')
         cursor = conn.cursor()
         
         cursor.execute('UPDATE custom_chatbots SET is_active = ?, updated_at = ? WHERE id = ?',
@@ -2533,7 +2524,7 @@ def delete_chatbot():
         data = request.json
         chatbot_id = data['id']
         
-        conn = sqlite3.connect('laila_central.db')
+        conn = sqlite3.connect('db/laila_central.db')
         cursor = conn.cursor()
         
         # Delete related data first
@@ -2565,7 +2556,7 @@ def delete_chatbot():
 def admin_get_users():
     """Get all users for admin management"""
     try:
-        conn = sqlite3.connect('laila_user.db')
+        conn = sqlite3.connect('db/laila_user.db')
         cursor = conn.cursor()
         
         cursor.execute('''
@@ -2609,7 +2600,7 @@ def admin_reset_password():
             return jsonify({'error': 'Password must be at least 6 characters long'}), 400
         
         # Check if user exists
-        conn = sqlite3.connect('laila_user.db')
+        conn = sqlite3.connect('db/laila_user.db')
         cursor = conn.cursor()
         
         cursor.execute('SELECT email, fullname FROM users WHERE email = ?', (email,))
@@ -2648,7 +2639,7 @@ def admin_reset_password():
 def get_available_chatbots():
     """Get all active chatbots for users"""
     try:
-        conn = sqlite3.connect('laila_central.db')
+        conn = sqlite3.connect('db/laila_central.db')
         cursor = conn.cursor()
         
         cursor.execute('''
@@ -2688,7 +2679,7 @@ def start_chatbot_conversation():
         chatbot_id = data['chatbot_id']
         
         # Get user ID
-        from central_database_admin import CentralDatabase
+        from model.central_database_admin import CentralDatabase
         db = CentralDatabase()
         user_info = db.get_user_by_email(current_user.email)
         user_id = user_info['id'] if user_info else None
@@ -2698,7 +2689,7 @@ def start_chatbot_conversation():
         session_id = str(uuid.uuid4())
         
         # Create conversation record
-        conn = sqlite3.connect('laila_central.db')
+        conn = sqlite3.connect('db/laila_central.db')
         cursor = conn.cursor()
         
         cursor.execute('''
@@ -2737,13 +2728,13 @@ def chatbot_chat():
         user_message = data['message']
         
         # Get user ID
-        from central_database_admin import CentralDatabase
+        from model.central_database_admin import CentralDatabase
         db = CentralDatabase()
         user_info = db.get_user_by_email(current_user.email)
         user_id = user_info['id'] if user_info else None
         
         # Get chatbot configuration
-        conn = sqlite3.connect('laila_central.db')
+        conn = sqlite3.connect('db/laila_central.db')
         cursor = conn.cursor()
         
         cursor.execute('SELECT system_prompt, ai_service, ai_model FROM custom_chatbots WHERE id = ?', (chatbot_id,))
@@ -2787,7 +2778,7 @@ def chatbot_chat():
         response_time = (datetime.now() - start_time).total_seconds()
         
         # Store AI response
-        conn = sqlite3.connect('laila_central.db')
+        conn = sqlite3.connect('db/laila_central.db')
         cursor = conn.cursor()
         
         cursor.execute('''
@@ -2827,7 +2818,7 @@ def chatbot_feedback():
         conversation_id = data['conversation_id']
         rating = data['rating']
         
-        conn = sqlite3.connect('laila_central.db')
+        conn = sqlite3.connect('db/laila_central.db')
         cursor = conn.cursor()
         
         cursor.execute('''
@@ -2955,7 +2946,7 @@ def system_chatbot_chat():
         
         # Store to user database chat logs
         try:
-            user_conn = sqlite3.connect('laila_user.db')
+            user_conn = sqlite3.connect('db/laila_user.db')
             user_cursor = user_conn.cursor()
             
             session_id = f"system_chat_{chatbot_name}_{int(time.time())}"

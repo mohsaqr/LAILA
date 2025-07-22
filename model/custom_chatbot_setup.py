@@ -11,7 +11,7 @@ from datetime import datetime
 def add_chatbot_tables():
     """Add custom chatbot tables to central database"""
     
-    conn = sqlite3.connect('laila_central.db')
+    conn = sqlite3.connect('db/laila_central.db')
     cursor = conn.cursor()
     
     # 1. CUSTOM CHATBOTS TABLE
@@ -124,7 +124,7 @@ def add_chatbot_tables():
 def create_sample_chatbots():
     """Create sample chatbots for demonstration"""
     
-    conn = sqlite3.connect('laila_central.db')
+    conn = sqlite3.connect('db/laila_central.db')
     cursor = conn.cursor()
     
     sample_chatbots = [
@@ -167,7 +167,7 @@ def create_sample_chatbots():
 def verify_chatbot_setup():
     """Verify the chatbot system setup"""
     
-    conn = sqlite3.connect('laila_central.db')
+    conn = sqlite3.connect('db/laila_central.db')
     cursor = conn.cursor()
     
     # Check tables exist
@@ -192,7 +192,7 @@ def verify_chatbot_setup():
             print(f"  - {name} ({status})")
     
     # Database size
-    db_size = len(open('laila_central.db', 'rb').read())
+    db_size = len(open('db/laila_central.db', 'rb').read())
     print(f"Database size: {db_size:,} bytes")
     
     conn.close()

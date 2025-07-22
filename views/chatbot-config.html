@@ -4,8 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Educational Chatbot Configuration</title>
-    <link rel="stylesheet" href="styles.css?v=1.1">
+    <link rel="stylesheet" href="unified-styles.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <script src="navigation.js"></script>
     <style>
         .config-container {
             max-width: 800px;
@@ -96,7 +97,8 @@
         .form-textarea {
             min-height: 120px;
             resize: vertical;
-            font-family: inherit;
+            font-family: 'Courier New', monospace;
+
         }
         
         .radio-group {
@@ -152,6 +154,10 @@
             line-height: 1.4;
         }
         
+        .radio-option.selected .help-text {
+            color: white;
+        }
+
         .button-group {
             display: flex;
             gap: 15px;

@@ -24,7 +24,7 @@ LOGIN_TEMPLATE = """
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>LAILA - Login</title>
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="unified-styles.css">
     <style>
         body {
             margin: 0;
@@ -265,7 +265,7 @@ ADMIN_ACCESS_DENIED_TEMPLATE = """
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Access Required - LAILA</title>
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="unified-styles.css">
     <style>
         body {
             margin: 0;
@@ -420,10 +420,10 @@ Remember: You're facilitating learning and critical thinking, not providing defi
 def load_bias_analysis_prompt():
     """Load bias analysis prompt from external file"""
     try:
-        with open('bias-analysis-system-prompt.txt', 'r', encoding='utf-8') as f:
+        with open('prompts/bias-analysis-system-prompt.txt', 'r', encoding='utf-8') as f:
             return f.read().strip()
     except FileNotFoundError:
-        return "Bias analysis prompt file not found. Please ensure 'bias-analysis-system-prompt.txt' exists."
+        return "Bias analysis prompt file not found. Please ensure 'bias-analysis-system-prompt.txt' exists in the 'prompts' folder."
     except Exception as e:
         return f"Error loading bias analysis prompt: {str(e)}"
 
@@ -446,7 +446,7 @@ def load_system_prompt(prompt_name):
         'welcome_assistant': 'welcome-assistant-system-prompt.txt'
     }
     
-    filename = prompt_files.get(prompt_name)
+    filename = prompt_files.get("prompts/" + prompt_name)
     if not filename:
         return f"Unknown prompt name: {prompt_name}. Available prompts: {list(prompt_files.keys())}"
     

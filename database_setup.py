@@ -12,7 +12,7 @@ import pandas as pd
 def create_chat_logs_database():
     """Create SQLite database for chat logs with clean schema"""
     
-    db_path = 'laila_chat_logs.db'
+    db_path = .dbchat_logs.db'
     
     # Create connection
     conn = sqlite3.connect(db_path)
@@ -80,7 +80,7 @@ def migrate_existing_csv_logs():
     csv_files = ['chat_logs_exhaustive.csv', 'chat_logs_clean.csv']
     migrated_count = 0
     
-    conn = sqlite3.connect('laila_chat_logs.db')
+    conn = sqlite3.connect(.dbchat_logs.db')
     
     for csv_file in csv_files:
         if os.path.exists(csv_file):
@@ -183,7 +183,7 @@ def extract_essential_context(context_str):
 def test_database():
     """Test database functionality"""
     
-    conn = sqlite3.connect('laila_chat_logs.db')
+    conn = sqlite3.connect(.dbchat_logs.db')
     cursor = conn.cursor()
     
     # Get table info
@@ -205,7 +205,7 @@ def test_database():
             print(f"  [{sample[1]}] {sample[3]} ({sample[4]}): {sample[6][:50]}...")
     
     # Database size
-    db_size = os.path.getsize('laila_chat_logs.db')
+    db_size = os.path.getsize(.dbchat_logs.db')
     print(f"💾 Database size: {db_size:,} bytes")
     
     conn.close()

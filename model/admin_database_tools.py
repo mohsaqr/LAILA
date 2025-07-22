@@ -12,7 +12,7 @@ import os
 class ChatLogDatabase:
     """Class for managing chat log database operations"""
     
-    def __init__(self, db_path='laila_chat_logs.db'):
+    def __init__(self, db_path=.dbchat_logs.db'):
         self.db_path = db_path
         self.ensure_database_exists()
     
