@@ -1,6 +1,8 @@
 # LAILA - **L**earn with **AI** **LA**boratory
-
-
+![Flask](https://img.shields.io/badge/flask-%23000.svg?style=for-the-badge&logo=flask&logoColor=white)
+![Python](https://img.shields.io/badge/python-3670A0?style=for-the-badge&logo=python&logoColor=ffdd54)
+![Google Gemini](https://img.shields.io/badge/google%20gemini-8E75B2?style=for-the-badge&logo=google%20gemini&logoColor=white)
+![ChatGPT](https://img.shields.io/badge/chatGPT-74aa9c?style=for-the-badge&logo=openai&logoColor=white)
 
 A comprehensive academic AI assistant platform for research, education, and learning analytics.
 
@@ -45,7 +47,10 @@ LAILA (Learn AI and LA) is a comprehensive web application designed for academic
 
 ### Installation
 
-1. **Extract the LAILA package** to your desired directory
+1. **Clone the LAILA project** to your desired directory
+   ```bash
+   git clone https://github.com/mohsaqr/LAILA
+   ```
 2. **Navigate to the LAILA folder**:
    ```bash
    cd LAILA
@@ -62,8 +67,11 @@ LAILA (Learn AI and LA) is a comprehensive web application designed for academic
    pip install -r requirements.txt
    ```
 
-5. **Configure API keys** (see Configuration section below)
-
+5. **Configure API keys**  
+   ```bash
+   cp example.env .env
+   ```
+   and fill in with your API Keys
 6. **Run the application**:
    ```bash
    python app.py
@@ -74,22 +82,6 @@ LAILA (Learn AI and LA) is a comprehensive web application designed for academic
    - The bias research platform will be available immediately
 
 ## ⚙️ Configuration
-
-### API Keys Setup
-
-Edit the `config.py` file to configure your AI services:
-
-```python
-# OpenAI Configuration (Optional - for GPT models)
-OPENAI_API_KEY = "your-openai-api-key-here"
-
-# Google AI Configuration (Optional - for Gemini models)
-GOOGLE_API_KEY = "your-google-api-key-here"
-
-# Server Configuration
-PORT = 5001
-DEBUG = True
-```
 
 ### AI Service Options
 
@@ -128,7 +120,7 @@ The platform supports multiple AI services:
 
 The platform includes an admin panel for data management:
 
-1. **Access**: Navigate to `http://localhost:5001/admin.html`
+1. **Access**: Navigate to `http://localhost:5001/admin`
 2. **Authentication**: Use the admin token (default: `supersecret`)
 3. **Features**:
    - Download all submissions as CSV
@@ -136,27 +128,6 @@ The platform includes an admin panel for data management:
    - View system statistics
 4. **Configuration**: Change the admin token in `config.py` (`ADMIN_TOKEN`)
 
-## 📁 File Structure
-
-```
-LAILA/
-├── app.py                              # Flask backend server
-├── config.py                          # Configuration and API keys
-├── requirements.txt                    # Python dependencies
-├── styles.css                         # CSS styling
-├── index.html                         # Main menu (entry point)
-├── bias-research-platform.html        # Bias research toolkit
-├── story-form.html                    # Interactive story builder
-├── chat.html                          # AI chat interface
-├── prompt-helper.html                 # Prompt engineering tool
-├── data-analyzer.html                 # Data interpretation tool
-├── chatbot-config.html                # Educational chatbot configurator
-├── admin.html                         # Admin panel
-├── bias-analysis-system-prompt.txt    # AI system prompt for bias analysis
-├── prompt-helper-system-prompt.txt    # Prompt engineering AI prompt
-├── interpret-data-system-prompt.txt   # Data interpretation AI prompt
-└── README.md                          # This documentation
-```
 
 ## 🎮 Usage Guide
 
@@ -194,18 +165,6 @@ After generating any vignette:
 
 ## 🔧 Customization
 
-### Adding New Vignette Templates
-
-Edit the JavaScript in `index.html` to add new scenario templates:
-
-```javascript
-const newScenarios = [
-    {
-        title: "Your Scenario Title",
-        content: "Your scenario description..."
-    }
-];
-```
 
 ### Modifying AI Prompts
 
@@ -215,16 +174,7 @@ Edit `bias-analysis-system-prompt.txt` to customize the AI's analysis approach:
 You are an expert in educational bias detection...
 [Customize the prompt for your specific needs]
 ```
-
-### Styling Changes
-
-Modify `styles.css` to change the visual appearance:
-
-```css
-.option-button {
-    /* Customize button appearance */
-}
-```
+ 
 
 ## 🛠️ Technical Details
 
@@ -282,7 +232,7 @@ Data is stored in CSV format for research analysis.
    ```
 
 3. **AI not responding**:
-   - Check API keys in `config.py`
+   - Check API keys
    - Verify internet connection
    - Try test mode first
 
@@ -334,6 +284,4 @@ To extend the platform:
 
 For questions about implementation or research applications, refer to your local technical support or the original development team.
 
----
-
-**LAILA - Empowering academic research through AI-assisted learning analytics**
+ 
