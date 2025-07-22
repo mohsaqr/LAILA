@@ -50,3 +50,4 @@ Thumbs.db
 *api_key*
 *secret*
 .env 
+trash/*

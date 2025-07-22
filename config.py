@@ -24,7 +24,7 @@ LOGIN_TEMPLATE = """
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>LAILA - Login</title>
-    <link rel="stylesheet" href="unified-styles.css">
+    <link rel="stylesheet" href="static/css/unified-styles.css">
     <style>
         body {
             margin: 0;
@@ -165,7 +165,7 @@ LOGIN_TEMPLATE = """
     <div class="container">
         <div class="main-content">
             <h1 class="main-title">LAILA</h1>
-            <p class="subtitle">Learn AI and LA Platform</p>
+            <p class="subtitle"><b>L</b>earn with <b>AI LA</b>boratory</p>
             
             {% if error %}
             <div class="error-message">
@@ -265,7 +265,7 @@ ADMIN_ACCESS_DENIED_TEMPLATE = """
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Access Required - LAILA</title>
-    <link rel="stylesheet" href="unified-styles.css">
+    <link rel="stylesheet" href="static/css/unified-styles.css">
     <style>
         body {
             margin: 0;

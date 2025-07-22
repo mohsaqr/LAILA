@@ -19,6 +19,7 @@ import random
 import time
 import traceback
 import sys
+import csv
 
 
 
@@ -151,11 +152,12 @@ login_manager.login_view = 'login'
 login_manager.session_protection = 'strong'
 
 class User(UserMixin):
-    def __init__(self, id, fullname, email, is_admin=False):
+    def __init__(self, id, fullname, email, is_admin=False, is_confirmed = False):
         self.id = id
         self.fullname = fullname
         self.email = email
         self.is_admin = is_admin
+        self.is_confirmed = is_confirmed
     def get_id(self):
         return str(self.id)
 
@@ -203,13 +205,13 @@ def login():
         if not email or not password:
             return render_template_string(LOGIN_TEMPLATE, 
                                         error="Both email and password are required.",
-                                        email=email)
+                                        email=email, show_register = action == 'register')
         
         # Validate email format
         if '@' not in email or '.' not in email.split('@')[-1]:
             return render_template_string(LOGIN_TEMPLATE,
                                         error="Please enter a valid email address.",
-                                        email=email)
+                                        email=email, show_register = action == 'register')
         
         # Validate password length
         if len(password) < 6:
@@ -221,7 +223,7 @@ def login():
         try:
             conn = sqlite3.connect('db/laila_user.db')
             cursor = conn.cursor()
-            cursor.execute('SELECT fullname, email, password_hash FROM users WHERE email = ?', (email,))
+            cursor.execute('SELECT fullname, email, password_hash, is_confirmed FROM users WHERE email = ?', (email,))
             user = cursor.fetchone()
             
             if action == 'register':
@@ -241,23 +243,25 @@ def login():
                 # Create new user
                 hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
                 cursor.execute('''
-                    INSERT INTO users (fullname, email, password_hash, is_admin, created_at, is_active)
-                    VALUES (?, ?, ?, ?, datetime('now'), ?)
-                ''', (fullname, email, hashed_password, False, True))
+                    INSERT INTO users (fullname, email, password_hash, is_admin, created_at, is_confirmed, is_active)
+                    VALUES (?, ?, ?, ?, datetime('now'),?, ?)
+                ''', (fullname, email, hashed_password, False,  False, True))
                 conn.commit()
                 conn.close()
-                
+                return render_template_string(LOGIN_TEMPLATE, 
+                                                info="Thank you for registering. An administrator will revise your account and grant you access.",
+                                                email=email)
                 # Log in the new user
-                user_obj = User(email, fullname, email)
-                # For registration, default to remember=True for better UX
-                login_user(user_obj, remember=True)
-                session.permanent = True
+                # user_obj = User(email, fullname, email)
+                # # For registration, default to remember=True for better UX
+                # login_user(user_obj, remember=True)
+                # session.permanent = True
                 
-                # Initialize session tracking
-                initialize_session()
+                # # Initialize session tracking
+                # initialize_session()
                 
-                print(f"✅ New user registered and logged in: {email}")
-                return redirect(url_for('main_menu'))
+                # print(f"✅ New user registered and logged in: {email}")
+                # return redirect(url_for('main_menu'))
                 
             else:
                 # Login flow
@@ -268,7 +272,11 @@ def login():
                                                 email=email)
                 
                 # Check password
-                fullname, email_db, hashed_password = user
+                fullname, email_db, hashed_password, is_confirmed = user
+                if is_confirmed == False:
+                    return render_template_string(LOGIN_TEMPLATE, 
+                                                error="Your account has not been confirmed yet.",
+                                                email=email)
                 # Handle both string and bytes password hashes
                 if isinstance(hashed_password, str):
                     hash_to_check = hashed_password.encode('utf-8')
@@ -327,10 +335,6 @@ def logout():
     logout_user()
     session.clear()
     return redirect(url_for('login'))
-
-
-
-
 
 # --- Missing Logging Functions ---
 def log_user_interaction(user_id, interaction_type=None, page=None, action=None, element_id=None, element_type=None, element_value=None, additional_data=None):
@@ -558,95 +562,13 @@ def require_true_admin(f):
             abort(403, description='Forbidden: Admins only')
         return f(*args, **kwargs)
     return decorated
-
-# --- Test Endpoint ---
-@app.route('/api/test', methods=['GET'])
-def test():
-    return jsonify({'status': 'Backend is running!'})
-
-# --- Debug Endpoints (No Auth Required) ---
-@app.route('/api/debug/data-status', methods=['GET'])
-def debug_data_status():
-    """Debug endpoint to check data availability"""
-    try:
-        conn = sqlite3.connect('db/laila_central.db')
-        cursor = conn.cursor()
-        
-        # Count records
-        cursor.execute("SELECT COUNT(*) FROM chat_logs")
-        chat_count = cursor.fetchone()[0]
-        
-        cursor.execute("SELECT COUNT(*) FROM user_interactions")
-        interaction_count = cursor.fetchone()[0]
-        
-        # Check current user status
-        user_status = {
-            'authenticated': current_user.is_authenticated,
-            'is_admin': getattr(current_user, 'is_admin', False) if current_user.is_authenticated else False,
-            'email': getattr(current_user, 'email', None) if current_user.is_authenticated else None
-        }
-        
-        conn.close()
-        
-        return jsonify({
-            'success': True,
-            'data_status': {
-                'chat_logs': chat_count,
-                'user_interactions': interaction_count
-            },
-            'user_status': user_status,
-            'timestamp': datetime.now().isoformat()
-        })
-        
-    except Exception as e:
-        return jsonify({
-            'success': False,
-            'error': str(e),
-            'timestamp': datetime.now().isoformat()
-        })
-
-@app.route('/api/debug/chat-logs-sample', methods=['GET'])  
-def debug_chat_logs_sample():
-    """Debug endpoint to get sample chat logs (no auth required)"""
-    try:
-        conn = sqlite3.connect('db/laila_central.db')
-        cursor = conn.cursor()
-        
-        cursor.execute("""
-            SELECT 
-                cl.timestamp,
-                u.email as user_email,
-                cl.module,
-                cl.sender,
-                LENGTH(cl.message) as message_length
-            FROM chat_logs cl
-            LEFT JOIN users u ON cl.user_id = u.id
-            ORDER BY cl.timestamp DESC
-            LIMIT 5
-        """)
-        
-        logs = []
-        for row in cursor.fetchall():
-            logs.append({
-                'timestamp': row[0],
-                'user_email': row[1],
-                'module': row[2],
-                'sender': row[3],
-                'message_length': row[4]
-            })
-        
-        conn.close()
-        return jsonify({'success': True, 'sample_logs': logs})
-        
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)})
-
-
-
-@app.route('/index.html')
-@login_required
-def traditional_form():
-    return send_file('views/index.html')
+def require_true_confirmed(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if not current_user.is_authenticated or not getattr(current_user, 'is_confirmed', False):
+            abort(403, description='Forbidden: Confirmed users only')
+        return f(*args, **kwargs)
+    return decorated
 
 @app.route('/admin')
 @login_required
@@ -697,8 +619,9 @@ def chatbot_config():
 def chatbot_interface():
     return send_file('views/chatbot-interface.html')
 
-@app.route('/test-chatbots')
+@app.route('/test-chatbots') # CHECK
 @login_required
+@require_true_admin
 def test_chatbots():
     return send_file('views/test-chatbots.html')
 
@@ -707,8 +630,9 @@ def test_chatbots():
 def user_settings():
     return send_file('views/user-settings.html')
 
-@app.route('/analytics')
+@app.route('/analytics') # CHECK
 @login_required
+@require_true_admin
 def analytics():
     return send_file('views/analytics.html')
 
@@ -786,7 +710,6 @@ def save_user_settings():
             existing_df = pd.read_csv(settings_file)
             existing_df = existing_df[existing_df['user_id'] != current_user.email]
             settings_df = pd.concat([existing_df, settings_df], ignore_index=True)
-        
         settings_df.to_csv(settings_file, index=False)
         
         # Log the action
@@ -800,6 +723,7 @@ def save_user_settings():
 
 # --- Endpoint: Get User Information ---
 @app.route('/api/user-info', methods=['GET'])
+@login_required
 def get_user_info():
     """Get current user information"""
     if current_user.is_authenticated:
@@ -845,6 +769,7 @@ def session_status():
 
 # --- Endpoint: Get Field Explanations ---
 @app.route('/api/field-help/<field_name>', methods=['GET'])
+@login_required
 def get_field_help(field_name):
     """Get explanation and example for a specific field"""
     log_interaction('tool_usage', 'get_field_help', 'get_field_help', details={'field_name': field_name})
@@ -853,6 +778,7 @@ def get_field_help(field_name):
 
 # --- Endpoint: Get Random Sample Data ---
 @app.route('/api/sample-data/<field_name>', methods=['GET'])
+@login_required
 def get_sample_data(field_name):
     """Get random sample data for a specific field"""
     log_interaction('tool_usage', 'get_sample_data', 'get_sample_data', details={'field_name': field_name})
@@ -861,6 +787,7 @@ def get_sample_data(field_name):
 
 # --- Endpoint: Get Configuration Info ---
 @app.route('/api/config', methods=['GET'])
+@login_required
 def get_config_info():
     """Get current configuration information (legacy endpoint)"""
     config = get_ai_config()
@@ -874,6 +801,7 @@ def get_config_info():
 
 # --- Endpoint: Get AI Configuration ---
 @app.route('/api/ai-config', methods=['GET'])
+@login_required
 def get_ai_configuration():
     """Get comprehensive AI configuration for model selection"""
     from config import get_ai_configuration
@@ -882,6 +810,7 @@ def get_ai_configuration():
 
 # --- Endpoint: Auto-fill Form with Sample Data ---
 @app.route('/api/auto-fill', methods=['GET'])
+@login_required
 def auto_fill_form():
     """Generate a complete form filled with logically consistent sample data"""
     print("AUTO-FILL: Form auto-fill requested")
@@ -997,6 +926,7 @@ def auto_fill_form():
 
 # --- Endpoint: Log User Interaction ---
 @app.route('/api/log-interaction', methods=['POST'])
+@require_true_admin
 def log_interaction_endpoint():
     """Log user interactions to CSV"""
     data = request.json
@@ -1023,6 +953,7 @@ def log_interaction_endpoint():
 
 # --- Endpoint: Log Chat Interaction ---
 @app.route('/api/log-chat', methods=['POST'])
+@require_true_admin
 def log_chat_endpoint():
     """Log chat interactions to CSV"""
     data = request.json
@@ -1044,6 +975,7 @@ def log_chat_endpoint():
 
 # --- Endpoint: Get User Interactions ---
 @app.route('/api/user-interactions', methods=['GET'])
+@require_true_admin
 def get_user_interactions():
     """Get user interaction logs from database"""
     print(f"🔍 User interactions API called by user: {getattr(current_user, 'email', 'anonymous') if current_user.is_authenticated else 'not authenticated'}")
@@ -1112,6 +1044,7 @@ def get_user_interactions():
 
 # --- Endpoint: Get Chat Logs ---
 @app.route('/api/chat-logs', methods=['GET'])
+@require_true_admin
 def get_chat_logs():
     """Get chat logs from database"""
     print(f"🔍 Chat logs API called by user: {getattr(current_user, 'email', 'anonymous') if current_user.is_authenticated else 'not authenticated'}")
@@ -1356,7 +1289,8 @@ def vignette_chat():
         return jsonify({'response': fallback_response, 'status': 'success'})
 
 # --- Endpoint: Student Bias Analysis (after 10+ interactions) ---
-@app.route('/api/student-bias', methods=['POST'])
+@app.route('/api/student-bias', methods=['POST'])  
+@login_required
 def student_bias_analysis():
     data = request.json
     vignette = data.get('vignette')
@@ -1418,6 +1352,7 @@ def student_bias_analysis():
 
 # --- Endpoint: Prompt Engineering Assistant ---
 @app.route('/api/prompt-engineering', methods=['POST'])
+@login_required
 def prompt_engineering():
     data = request.json
     user_message = data.get('message')
@@ -1525,6 +1460,7 @@ def prompt_engineering():
 
 # --- Endpoint: Prompt Discussion ---
 @app.route('/api/prompt-discussion', methods=['POST'])
+@login_required
 def prompt_discussion():
     data = request.json
     user_message = data.get('message')
@@ -1604,6 +1540,7 @@ def prompt_discussion():
 
 # --- Endpoint: Data Analysis ---
 @app.route('/api/analyze-data', methods=['POST'])
+@login_required
 def analyze_data():
     data = request.json
     data_content = data.get('data')
@@ -1677,7 +1614,7 @@ def analyze_data():
             fallback_analysis = f"""I apologize, but I'm having trouble analyzing your image right now. Here's some general guidance for image analysis in educational research:\n\n**Key Areas to Consider:**\n- **Content Analysis**: What educational materials, settings, or activities are shown?\n- **Visual Elements**: Charts, graphs, text, or educational tools visible\n- **Context**: Classroom environment, learning materials, or student work\n- **Research Applications**: How this visual data could support educational research\n\nPlease try uploading a smaller image file or a different format."""
         
         else:
-            fallback_analysis = f"""I apologize, but I'm having trouble analyzing your data right now. Here's some general guidance for data analysis in educational research:\n\n**Key Areas to Examine:**\n- **Content Themes**: What are the main topics or concepts?\n- **Patterns**: Are there recurring elements or trends?\n- **Educational Relevance**: How does this relate to learning, teaching, or educational outcomes?\n- **Research Potential**: What questions could this data help answer?\n\nPlease try with a smaller data sample or check the format."""
+            fallback_analysis = f"""I apologize, but I'm having trouble analyzing your data right now. Here's some general guidance for data interpretation in educational research:\n\n**General Interpretation Framework:**\n- **Descriptive Summary**: What does the data show at face value?\n- **Patterns and Trends**: What patterns emerge from the analysis?\n- **Educational Significance**: How do these findings relate to learning and teaching?\n- **Practical Implications**: What actions might educators take based on these results?\n- **Limitations**: What are the constraints and caveats of this analysis?\n\nPlease try again with a smaller data sample or check the format."""
         
         return jsonify({'analysis': fallback_analysis, 'status': 'success'})
 
@@ -1994,7 +1931,7 @@ def educational_chat():
 
 # --- Endpoint: AI Bias Analysis ---
 @app.route('/api/bias', methods=['POST'])
-@require_true_admin
+@login_required
 def bias_analysis():
     data = request.json
     vignette = data.get('vignette')
@@ -2084,7 +2021,6 @@ def get_system_settings():
 
 # --- Endpoint: Update System AI Settings (Admin Only) ---
 @app.route('/api/system-settings', methods=['POST'])
-@login_required
 @require_true_admin
 def update_system_settings():
     data = request.json
@@ -2095,7 +2031,7 @@ def update_system_settings():
 
 # --- Endpoints: Central Database Management (Admin) ---
 @app.route('/api/admin/database-stats')
-@login_required
+@require_true_admin
 def database_stats():
     """Get database statistics for admin interface"""
     try:
@@ -2114,7 +2050,7 @@ def database_stats():
         }), 500
 
 @app.route('/api/admin/export-chat-logs', methods=['POST'])
-@login_required
+@require_true_admin
 def export_chat_logs():
     """Export chat logs to CSV with filtering options"""
     try:
@@ -2166,7 +2102,7 @@ def export_chat_logs():
         }), 500
 
 @app.route('/api/admin/export-users', methods=['POST'])
-@login_required
+@require_true_admin
 def export_users():
     """Export users data to CSV"""
     try:
@@ -2189,7 +2125,7 @@ def export_users():
         }), 500
 
 @app.route('/api/admin/export-interactions', methods=['POST'])
-@login_required
+@require_true_admin
 def export_interactions():
     """Export user interactions to CSV"""
     try:
@@ -2221,7 +2157,7 @@ def export_interactions():
         }), 500
 
 @app.route('/api/admin/export-submissions', methods=['POST'])
-@login_required
+@require_true_admin
 def export_submissions():
     """Export user submissions to CSV"""
     try:
@@ -2253,7 +2189,7 @@ def export_submissions():
         }), 500
 
 @app.route('/api/admin/download-export/<filename>')
-@login_required
+@require_true_admin
 def download_export(filename):
     """Download exported CSV file"""
     try:
@@ -2279,7 +2215,6 @@ def download_export(filename):
 
 # --- Endpoints: Custom Chatbot Management (Admin) ---
 @app.route('/api/admin/chatbots')
-@login_required
 @require_true_admin
 def get_chatbots():
     """Get all custom chatbots for admin management"""
@@ -2336,7 +2271,6 @@ def get_chatbots():
         }), 500
 
 @app.route('/api/admin/chatbot-stats')
-@login_required
 @require_true_admin
 def get_chatbot_stats():
     """Get chatbot system statistics"""
@@ -2393,7 +2327,6 @@ def get_chatbot_stats():
         }), 500
 
 @app.route('/api/admin/chatbots/create', methods=['POST'])
-@login_required
 @require_true_admin
 def create_chatbot():
     """Create a new custom chatbot"""
@@ -2442,7 +2375,6 @@ def create_chatbot():
         }), 500
 
 @app.route('/api/admin/chatbots/update', methods=['POST'])
-@login_required
 @require_true_admin
 def update_chatbot():
     """Update an existing custom chatbot"""
@@ -2483,7 +2415,6 @@ def update_chatbot():
         }), 500
 
 @app.route('/api/admin/chatbots/toggle', methods=['POST'])
-@login_required
 @require_true_admin
 def toggle_chatbot():
     """Toggle chatbot active status"""
@@ -2516,7 +2447,6 @@ def toggle_chatbot():
         }), 500
 
 @app.route('/api/admin/chatbots/delete', methods=['POST'])
-@login_required
 @require_true_admin
 def delete_chatbot():
     """Delete a custom chatbot"""
@@ -2551,7 +2481,6 @@ def delete_chatbot():
 
 # --- Admin User Management Functions ---
 @app.route('/api/admin/users')
-@login_required
 @require_true_admin
 def admin_get_users():
     """Get all users for admin management"""
@@ -2560,18 +2489,19 @@ def admin_get_users():
         cursor = conn.cursor()
         
         cursor.execute('''
-            SELECT email, fullname, is_admin, created_at, is_active 
+            SELECT email, fullname, is_admin, created_at, is_active, is_confirmed 
             FROM users 
             ORDER BY created_at DESC
         ''')
         
         users = []
         for row in cursor.fetchall():
-            email, fullname, is_admin, created_at, is_active = row
+            email, fullname, is_admin, created_at, is_active, is_confirmed = row
             users.append({
                 'email': email,
                 'fullname': fullname,
                 'is_admin': bool(is_admin),
+                'is_confirmed': bool(is_confirmed),
                 'created_at': created_at,
                 'is_active': bool(is_active)
             })
@@ -2582,9 +2512,50 @@ def admin_get_users():
     except Exception as e:
         print(f"Error fetching users: {e}")
         return jsonify({'error': 'Failed to fetch users'}), 500
+    
+# --- Endpoint: Confirm user ---
+@app.route('/api/admin/users/confirm', methods=['POST'])
+@require_true_admin
+def confirm_user():
+    """Confirm a user's email address (admin only)"""
+    try:
+        data = request.json
+        print(data)
+        email = data.get('email', '')
+        if not email:
+            return jsonify({'error': 'Email is required'}), 400
+        email = email.strip().lower()
+        # Check if user exists
+        conn = sqlite3.connect('db/laila_user.db')
+        cursor = conn.cursor()
+        
+        cursor.execute('SELECT email, fullname FROM users WHERE email = ?', (email,))
+        user = cursor.fetchone()
+        
+        if not user:
+            conn.close()
+            return jsonify({'error': 'User not found'}), 404
+        
+        # Hash new password
+        
+        # Update password
+        cursor.execute('UPDATE users SET is_confirmed = ? WHERE email = ?', (True, email))
+        conn.commit()
+        conn.close()
+        
+        print(f"✅ Admin {current_user.email} confirmed user {email}")
+        
+        return jsonify({
+            'message': f'Confirmed account successfully for {email}',
+            'email': email
+        })
+    except Exception as e:
+        print(f"❌ Error in user confirmation: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': 'Failed to reset user'}), 500
 
 @app.route('/api/admin/reset-password', methods=['POST'])
-@login_required
 @require_true_admin
 def admin_reset_password():
     """Reset a user's password (admin only)"""
@@ -2842,13 +2813,12 @@ def chatbot_feedback():
 
 # --- Serve Admin and User Pages ---
 @app.route('/chatbot-admin')
-@login_required
 @require_true_admin
 def chatbot_admin():
     return send_file('views/chatbot-admin.html')
 
 @app.route('/custom-chatbots')
-@login_required
+@require_true_admin
 def custom_chatbots():
     return send_file('views/custom-chatbots.html')
 

@@ -17,6 +17,10 @@
     --text-light: #7f8c8d;
     --white: #ffffff;
     --background: #f8f9fa;
+    --form-background: #ffffff;
+    --label-color: #555555;
+    --border-color: #dddddd;
+    --shadow-color: rgba(0, 0, 0, 0.1);
     
     /* Consistent Sizing */
     --container-max-width: 800px;  /* Reduced from 1000px */

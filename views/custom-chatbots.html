@@ -4,9 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Custom Chatbots - LAILA</title>
-    <link rel="stylesheet" href="unified-styles.css">
+    <link rel="stylesheet" href="static/css/unified-styles.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <script src="navigation.js"></script>
+    <script src="static/js/navigation.js"></script>
     <style>
         /* Chatbot Selection Grid */
         .chatbot-selector {
@@ -475,7 +475,6 @@
 
         // Load chatbots and user info on page load
         document.addEventListener('DOMContentLoaded', function() {
-            loadUserInfo();
             loadAvailableChatbots();
             
             // Auto-resize textarea
@@ -485,21 +484,7 @@
                 this.style.height = Math.min(this.scrollHeight, 120) + 'px';
             });
         });
-
-        // Load user information
-        async function loadUserInfo() {
-            try {
-                const response = await fetch('/api/user-info');
-                if (response.ok) {
-                    const data = await response.json();
-                    if (data.authenticated) {
-                        currentUserId = data.user.email;
-                    }
-                }
-            } catch (error) {
-                console.error('Error loading user info:', error);
-            }
-        }
+ 
 
         // Load available chatbots
         async function loadAvailableChatbots() {

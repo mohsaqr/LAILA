@@ -4,13 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Panel - LAILA</title>
-    <link rel="stylesheet" href="unified-styles.css">
+    <link rel="stylesheet" href="static/css/unified-styles.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <script src="navigation.js"></script>
+    <script src="static/js/navigation.js"></script>
     <style>
         .admin-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
             gap: 30px;
             margin-top: 30px;
         }
@@ -38,7 +38,7 @@
         
         .stats-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(250px, 2fr));
             gap: 15px;
             margin: 20px 0;
         }
@@ -146,7 +146,7 @@
         }
         
         .user-badge.admin {
-            background: #e74c3c;
+            background: purple;
         }
         
         .loading {
@@ -175,10 +175,41 @@
         .file-item:last-child {
             border-bottom: none;
         }
+        .btn-confirm.confirmed {
+            background-color: #28a745;
+            color: white;
+        }
+        .btn-confirm.unconfirmed {
+            background-color: tomato;
+            color: white;
+        }
+        .btn-confirm.loading {
+            pointer-events: none;
+            opacity: 0.6;
+            position: relative;
+        }
+
+        .btn-confirm .spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid #fff;
+            border-top: 2px solid #666;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-left: 8px;
+            vertical-align: middle;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
     </style>
 </head>
 <body>
-    <div class="page-container">
+    <div class="page-containerd">
         <div class="content-card">
             <h1 class="page-title">🛠️ Admin Panel</h1>
             <p class="page-subtitle">System management and database administration</p>
@@ -671,7 +702,6 @@
                     container.innerHTML = '<div class="loading">No users found</div>';
                     return;
                 }
-                
                 container.innerHTML = users.map(user => `
                     <div class="user-item">
                         <div class="user-info">
@@ -679,10 +709,49 @@
                             <div class="user-details">
                                 ${user.fullname} • Created: ${user.created_at ? new Date(user.created_at).toLocaleDateString() : 'Unknown'}
                                 ${user.is_admin ? '<span class="user-badge admin">Admin</span>' : '<span class="user-badge">User</span>'}
+                                ${user.is_confirmed ? `<button class="btn user-badge btn-confirm confirmed" data-email="${user.email}">confirmed <span class="fa fa-check"></span></button>` : 
+                                `<button class="btn user-badge btn-confirm  unconfirmed" data-email="${user.email}">not confirmed<span class="fa fa-xmark"></span></button>`}
                             </div>
                         </div>
                     </div>
                 `).join('');
+                document.querySelectorAll('.btn-confirm.unconfirmed').forEach(button => {
+                    button.addEventListener('click', async (e) => {
+                        const btn = e.currentTarget;
+                        const userEmail = btn.getAttribute('data-email');
+
+                        // Show loading animation
+                        btn.disabled = true;
+                        btn.classList.add('loading');
+                        const originalHTML = btn.innerHTML;
+                        btn.innerHTML = 'Confirming <span class="spinner"></span>';
+                        console.log(userEmail)
+                        try {
+                            const response = await fetch(`/api/admin/users/confirm`, {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                },
+                                body: JSON.stringify({ email: userEmail })
+                            });
+
+                            if (!response.ok) throw new Error('Failed to confirm user');
+
+                            // Mark as confirmed
+                            btn.classList.remove('unconfirmed', 'loading');
+                            btn.classList.add('confirmed');
+                            btn.disabled = false;
+                            btn.innerHTML = 'confirmed <span class="fa fa-check"></span>';
+                        } catch (error) {
+                            console.error('Confirmation failed:', error);
+                            alert('Could not confirm the user. Please try again.');
+                            btn.disabled = false;
+                            btn.classList.remove('loading');
+                            btn.innerHTML = originalHTML;
+                        }
+                    });
+                });
+
                 
             } catch (error) {
                 console.error('Error loading users:', error);
@@ -772,6 +841,7 @@
             
             document.getElementById('export-date-to').value = today.toISOString().split('T')[0];
             document.getElementById('export-date-from').value = thirtyDaysAgo.toISOString().split('T')[0];
+            
         });
     </script>
 </body>

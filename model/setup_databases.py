@@ -116,6 +116,7 @@ def create_user_database():
             email TEXT UNIQUE NOT NULL,
             password_hash TEXT NOT NULL,
             is_admin BOOLEAN DEFAULT FALSE,
+            is_confirmed BOOLEAN DEFAULT FALSE,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             is_active BOOLEAN DEFAULT TRUE
         )
@@ -142,9 +143,9 @@ def create_user_database():
     # Insert default admin user
     password_hash = bcrypt.hashpw('admin123'.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
     cursor.execute('''
-        INSERT OR IGNORE INTO users (fullname, email, password_hash, is_admin, is_active)
-        VALUES (?, ?, ?, ?, ?)
-    ''', ('Administrator', 'admin@laila.platform', password_hash, True, True))
+        INSERT OR IGNORE INTO users (fullname, email, password_hash, is_admin, is_confirmed, is_active)
+        VALUES (?, ?, ?, ?, ?, ?)
+    ''', ('Administrator', 'admin@laila.platform', password_hash, True, False, True))
     
     conn.commit()
     conn.close()

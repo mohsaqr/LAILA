@@ -2,7 +2,9 @@
 REM LAAI Installation Script for Windows
 REM This script sets up the LAAI platform for immediate use
 
-echo 🚀 LAILA - Learn AI and LA Platform Installation
+echo 🚀 LAILA - Learn with AI LAboratory
+
+ Installation
 echo ===============================================
 
 REM Check if Python is installed

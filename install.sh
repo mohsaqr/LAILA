@@ -3,7 +3,9 @@
 # LAAI Installation Script
 # This script sets up the LAAI platform for immediate use
 
-echo "🚀 LAILA - Learn AI and LA Platform Installation"
+echo "🚀 LAILA - Learn with AI LAboratory
+
+ Installation"
 echo "==============================================="
 
 # Check if Python 3 is installed

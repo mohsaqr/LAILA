@@ -4,7 +4,7 @@
 // Include this in all pages for consistent navigation
 
 // Create unified navigation header
-function createNavigationHeader() {
+async function createNavigationHeader() {
     const nav = document.createElement('div');
     nav.className = 'unified-nav';
     nav.innerHTML = `
@@ -20,12 +20,10 @@ function createNavigationHeader() {
             <button class="nav-button admin-btn" id="adminBtn" onclick="goToAdmin()" style="display: none;">
                 <i class="fas fa-crown"></i> Admin Panel
             </button>
-            <button class="nav-button settings-btn" onclick="goToUserSettings()">
-                <i class="fas fa-cog"></i> Settings
-            </button>
-            <div class="user-info" id="userInfo">
+             
+            <button class="nav-button settings-btn" id="userInfo" onclick="goToUserSettings()">
                 <i class="fas fa-user"></i> <span id="userName">Loading...</span>
-            </div>
+            </button>
             <button class="nav-button logout-btn" onclick="logout()">
                 <i class="fas fa-sign-out-alt"></i> Logout
             </button>
@@ -34,9 +32,8 @@ function createNavigationHeader() {
     
     // Insert at the beginning of body
     document.body.insertBefore(nav, document.body.firstChild);
-    
     // Load user info
-    loadUserInfo();
+    await loadUserInfo();
 }
 
 // Load user information
@@ -101,13 +98,13 @@ function logInteraction(action, page, elementId = null, elementType = null, elem
 }
 
 // Initialize navigation when DOM is loaded
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', async function() {
     // Add navigation to all pages except login page
     const path = window.location.pathname;
     const isLoginPage = path.includes('login') || path === '/' || path.endsWith('/');
     
     if (!isLoginPage) {
-        createNavigationHeader();
+       await createNavigationHeader();
     }
     
     // Log page view
@@ -202,7 +199,7 @@ const navCSS = `
     
     .user-info {
         background: rgba(255,255,255,0.15);
-        padding: 8px 16px;
+        padding: 4px 16px;
         border-radius: 20px;
         backdrop-filter: blur(10px);
         font-size: 0.9em;
@@ -235,7 +232,7 @@ const navCSS = `
         
         .nav-button, .user-info {
             font-size: 0.8em;
-            padding: 6px 12px;
+            padding: 4px 12px;
         }
     }
 </style>

@@ -1,4 +1,6 @@
-# LAILA - Learn AI and LA Platform
+# LAILA - **L**earn with **AI** **LA**boratory
+
+
 
 A comprehensive academic AI assistant platform for research, education, and learning analytics.
 
