@@ -157,7 +157,7 @@
             document.getElementById('conversationHistory').innerHTML = '';
 
             // Log interaction
-            logInteraction('start_prompt_engineering', 'prompt-helper.html', 'startButton');
+            logInteraction('start_prompt_engineering', 'prompt-helper', 'startButton');
 
             // Send first request to AI
             await sendPromptEngineeringRequest(initialPrompt);
@@ -249,7 +249,7 @@
                 button.classList.remove('btn-success');
             }, 2000);
             
-            logInteraction('copy_prompt', 'prompt-helper.html', 'copyButton');
+            logInteraction('copy_prompt', 'prompt-helper', 'copyButton');
         }
 
         function savePrompt() {
@@ -262,7 +262,7 @@
             a.click();
             URL.revokeObjectURL(url);
             
-            logInteraction('save_prompt', 'prompt-helper.html', 'saveButton');
+            logInteraction('save_prompt', 'prompt-helper', 'saveButton');
         }
 
         function discussPrompt() {

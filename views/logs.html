@@ -5,21 +5,24 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>LAILA - System Logs</title>
     <link rel="stylesheet" href="styles.css?v=1.1">
+    <link rel="stylesheet" href="unified-styles.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <script src="navigation.js"></script>
     <style>
         .logs-container {
             max-width: 1400px;
             margin: 0 auto;
             padding: 20px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
             min-height: 100vh;
             font-family: 'Arial', sans-serif;
+            padding-top: 80px; /* Account for fixed navigation */
         }
         
         .logs-header {
             text-align: center;
             margin-bottom: 30px;
-            color: white;
+            color: #2c3e50;
         }
         
         .logs-title {
@@ -35,20 +38,22 @@
         
         .back-link {
             position: absolute;
-            top: 20px;
+            top: 80px;
             left: 20px;
-            color: white;
+            color: #2c3e50;
             text-decoration: none;
             padding: 12px 24px;
-            background: rgba(255,255,255,0.2);
+            background: rgba(255,255,255,0.8);
             border-radius: 25px;
             transition: all 0.3s ease;
             backdrop-filter: blur(10px);
+            border: 1px solid #ddd;
         }
         
         .back-link:hover {
-            background: rgba(255,255,255,0.3);
+            background: rgba(255,255,255,1);
             transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
         }
         
         .logs-tabs {
@@ -306,7 +311,7 @@
 </head>
 <body>
     <div class="logs-container">
-        <a href="admin.html" class="back-link">
+        <a href="admin" class="back-link">
             <i class="fas fa-arrow-left"></i> Back to Admin
         </a>
         
@@ -617,19 +622,23 @@
                 const timestamp = new Date(chat.timestamp).toLocaleString();
                 const messageTypeClass = chat.message_type === 'ai_response' ? 'ai' : 'user';
                 
+                const userDisplay = chat.user_email || chat.user_id || chat.user_name || 'Unknown User';
+                const messageContent = chat.message || chat.content || '';
+                const processingTime = chat.response_time_sec ? (chat.response_time_sec * 1000).toFixed(0) + 'ms' : (chat.processing_time_ms ? chat.processing_time_ms + 'ms' : '-');
+                
                 html += `
                     <tr>
                         <td class="timestamp">${timestamp}</td>
-                        <td class="user-id">${chat.user_id}</td>
-                        <td>${chat.chat_type}</td>
+                        <td class="user-id">${userDisplay}</td>
+                        <td>${chat.chat_type || chat.module || '-'}</td>
                         <td><span class="action-type ${messageTypeClass}">${chat.message_type}</span></td>
                         <td>
-                            <div class="content-preview">${chat.content.substring(0, 100)}...</div>
+                            <div class="content-preview">${messageContent.substring(0, 100)}...</div>
                             <button class="expand-button" onclick="toggleDetails(this)">Show Full</button>
-                            <div class="content-full">${chat.content}</div>
+                            <div class="content-full">${messageContent}</div>
                         </td>
                         <td>${chat.ai_model || '-'}</td>
-                        <td>${chat.processing_time_ms ? chat.processing_time_ms + 'ms' : '-'}</td>
+                        <td>${processingTime}</td>
                     </tr>
                 `;
             });
@@ -822,6 +831,11 @@
                 button.textContent = 'Show Details';
             }
         }
+        
+        // Create navigation bar when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            createNavigationHeader();
+        });
     </script>
 </body>
 </html> 

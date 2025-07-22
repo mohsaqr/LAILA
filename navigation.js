@@ -17,6 +17,9 @@ function createNavigationHeader() {
             <span class="app-title">LAILA</span>
         </div>
         <div class="nav-right">
+            <button class="nav-button admin-btn" id="adminBtn" onclick="goToAdmin()" style="display: none;">
+                <i class="fas fa-crown"></i> Admin Panel
+            </button>
             <button class="nav-button settings-btn" onclick="goToUserSettings()">
                 <i class="fas fa-cog"></i> Settings
             </button>
@@ -44,6 +47,14 @@ async function loadUserInfo() {
             const data = await response.json();
             if (data.authenticated) {
                 document.getElementById('userName').textContent = data.user.fullname || data.user.email;
+                
+                // Show admin button if user is admin
+                if (data.user.is_admin) {
+                    const adminBtn = document.getElementById('adminBtn');
+                    if (adminBtn) {
+                        adminBtn.style.display = 'inline-block';
+                    }
+                }
             }
         }
     } catch (error) {
@@ -53,7 +64,7 @@ async function loadUserInfo() {
 
 // Navigation functions
 function goToMainMenu() {
-    window.location.href = '/main-menu.html';
+    window.location.href = '/main-menu';
 }
 
 function logout() {
@@ -63,7 +74,11 @@ function logout() {
 }
 
 function goToUserSettings() {
-    window.location.href = '/user-settings.html';
+    window.location.href = '/user-settings';
+}
+
+function goToAdmin() {
+    window.location.href = '/admin';
 }
 
 // Log interaction helper
@@ -166,6 +181,19 @@ const navCSS = `
     
     .settings-btn {
         background: rgba(40, 167, 69, 0.8);
+    }
+    
+    .admin-btn {
+        background: linear-gradient(135deg, #e74c3c, #c0392b);
+        border: 2px solid rgba(255,255,255,0.3);
+        font-weight: bold;
+        box-shadow: 0 2px 10px rgba(231, 76, 60, 0.3);
+    }
+    
+    .admin-btn:hover {
+        background: linear-gradient(135deg, #c0392b, #a93226);
+        box-shadow: 0 4px 15px rgba(231, 76, 60, 0.5);
+        border-color: rgba(255,255,255,0.6);
     }
     
     .settings-btn:hover {

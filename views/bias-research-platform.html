@@ -5,7 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bias Research Platform</title>
     <link rel="stylesheet" href="styles.css?v=1.1">
+    <link rel="stylesheet" href="unified-styles.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <script src="navigation.js"></script>
     <style>
         .platform-container {
             max-width: 1200px;
@@ -224,6 +226,107 @@
             margin: 20px 0;
         }
         
+        /* Chat Interface Styles */
+        .chat-interface {
+            display: none;
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            margin-top: 30px;
+        }
+        
+        .chat-interface.active {
+            display: block;
+        }
+        
+        .chat-header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 15px;
+        }
+        
+        .chat-messages {
+            height: 400px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            background: #f8f9fa;
+        }
+        
+        .message {
+            margin: 15px 0;
+            padding: 15px;
+            border-radius: 10px;
+            max-width: 85%;
+            line-height: 1.6;
+        }
+        
+        .message.user {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            margin-left: auto;
+            text-align: right;
+        }
+        
+        .message.ai {
+            background: white;
+            border: 1px solid #ddd;
+            color: #333;
+        }
+        
+        .chat-input-container {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .chat-input {
+            flex: 1;
+            padding: 15px;
+            border: 2px solid #ddd;
+            border-radius: 25px;
+            font-size: 16px;
+            outline: none;
+        }
+        
+        .chat-input:focus {
+            border-color: #667eea;
+        }
+        
+        .send-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 25px;
+            padding: 15px 25px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
+        
+        .send-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        .send-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .typing-indicator {
+            display: none;
+            padding: 15px;
+            color: #667eea;
+            font-style: italic;
+        }
+        
         .story-form-section {
             background: #f8f9fa;
             padding: 30px;
@@ -281,7 +384,7 @@
         
         <!-- Main Functions -->
         <div class="content-panel active">
-            <button class="option-button" onclick="window.location.href='story-form.html'">
+            <button class="option-button" onclick="window.location.href='story-form'">
                 <i class="fas fa-edit"></i> Interactive Story Builder
                 <div class="option-description">Create a detailed vignette through guided storytelling</div>
             </button>
@@ -432,15 +535,49 @@
                 </p>
             </div>
             
-            <button class="option-button" onclick="window.location.href='index.html'">
+            <button class="option-button" onclick="window.location.href='/'">
                 <i class="fas fa-clipboard-list"></i> Open Traditional Form
                 <div class="option-description">Multi-step data collection with validation</div>
             </button>
             
-            <button class="option-button secondary" onclick="window.location.href='admin.html'">
+            <button class="option-button secondary" onclick="window.location.href='admin'">
                 <i class="fas fa-download"></i> Admin Panel
                 <div class="option-description">Download data and perform bias analysis</div>
             </button>
+        </div>
+        
+        <!-- Chat Interface for Bias Analysis -->
+        <div id="chat-interface" class="chat-interface">
+            <div class="chat-header">
+                <h2><i class="fas fa-robot"></i> Bias Analysis Assistant</h2>
+                <p>Discuss and analyze your vignette with our AI assistant</p>
+            </div>
+            
+            <div id="chat-messages" class="chat-messages">
+                <div class="message ai">
+                    <strong>🔍 Bias Analysis Assistant:</strong><br><br>
+                    I'm here to help you analyze potential biases in your vignette. I'll examine various forms of bias including gender, cultural, socioeconomic, confirmation, and selection bias, and provide constructive feedback to promote awareness and better practices.
+                    <br><br>
+                    Let's start by discussing your vignette. What aspects would you like me to focus on?
+                </div>
+            </div>
+            
+            <div class="typing-indicator" id="typing-indicator">
+                <i class="fas fa-ellipsis-h"></i> Assistant is typing...
+            </div>
+            
+            <div class="chat-input-container">
+                <input type="text" id="chat-input" class="chat-input" placeholder="Type your message or ask about bias analysis..." maxlength="500">
+                <button id="send-btn" class="send-btn" onclick="sendMessage()">
+                    <i class="fas fa-paper-plane"></i> Send
+                </button>
+            </div>
+            
+            <div style="text-align: center; margin-top: 20px;">
+                <button class="option-button tertiary" onclick="returnToStories()" style="width: auto; display: inline-block;">
+                    <i class="fas fa-arrow-left"></i> Back to Stories
+                </button>
+            </div>
         </div>
     </div>
 
@@ -660,6 +797,9 @@
             comparisonSection.scrollIntoView({ behavior: 'smooth' });
         }
 
+        // Global variable to store vignette for chat
+        let currentVignette = '';
+        
         function continueToChat() {
             let vignetteContent = '';
             
@@ -672,14 +812,17 @@
                 // Comparison stories
                 const titleA = document.getElementById('story-a-title').textContent;
                 const titleB = document.getElementById('story-b-title').textContent;
-                vignetteContent = `${titleA}: ${storyAContent.textContent}\n\n${titleB}: ${storyBContent.textContent}\n\nPlease analyze these vignettes for potential bias and discuss the differences between them.`;
+                vignetteContent = `${titleA}: ${storyAContent.textContent}\n\n${titleB}: ${storyBContent.textContent}`;
             } else if (quickStoryText && quickStoryText.textContent) {
                 // Quick story
-                vignetteContent = quickStoryText.textContent + '\n\nPlease analyze this vignette for potential bias and discuss its implications.';
+                vignetteContent = quickStoryText.textContent;
             } else {
                 alert('Please generate a story first before continuing to chat.');
                 return;
             }
+            
+            // Store vignette for chat
+            currentVignette = vignetteContent;
             
             // Log chat transition
             fetch('/api/log-interaction', {
@@ -695,10 +838,199 @@
                 })
             }).catch(console.error);
             
-            // Redirect back to main menu after vignette creation
-            alert('Vignette created successfully! Returning to main menu.');
-            window.location.href = '/main-menu.html';
+            // Show chat interface
+            document.querySelectorAll('.content-panel').forEach(panel => panel.style.display = 'none');
+            document.getElementById('chat-interface').classList.add('active');
+            document.getElementById('chat-interface').scrollIntoView({ behavior: 'smooth' });
+            
+            // Add vignette to chat as user message
+            const chatMessages = document.getElementById('chat-messages');
+            const vignetteMessage = document.createElement('div');
+            vignetteMessage.className = 'message user';
+            vignetteMessage.innerHTML = `<strong>📖 My Vignette:</strong><br><br>${vignetteContent.replace(/\n/g, '<br>')}`;
+            chatMessages.appendChild(vignetteMessage);
+            
+            // Auto-trigger bias analysis
+            setTimeout(() => {
+                performBiasAnalysis();
+            }, 1000);
         }
+        
+        async function performBiasAnalysis() {
+            const chatMessages = document.getElementById('chat-messages');
+            const typingIndicator = document.getElementById('typing-indicator');
+            
+            // Show typing indicator
+            typingIndicator.style.display = 'block';
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+            
+            try {
+                const response = await fetch('/api/student-bias', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        vignette: currentVignette
+                    })
+                });
+                
+                const data = await response.json();
+                
+                // Hide typing indicator
+                typingIndicator.style.display = 'none';
+                
+                if (data.status === 'success') {
+                    // Add bias analysis result to chat
+                    const biasResult = document.createElement('div');
+                    biasResult.className = 'message ai';
+                    biasResult.innerHTML = `
+                        <strong>🔍 Bias Analysis Results:</strong><br><br>
+                        ${data.bias_analysis.replace(/\n/g, '<br>')}
+                    `;
+                    chatMessages.appendChild(biasResult);
+                } else {
+                    // Error message
+                    const errorResult = document.createElement('div');
+                    errorResult.className = 'message ai';
+                    errorResult.innerHTML = `
+                        <strong>❌ Analysis Error:</strong><br><br>
+                        ${data.error || 'Unable to perform bias analysis at this time. Please try again.'}
+                    `;
+                    chatMessages.appendChild(errorResult);
+                }
+            } catch (error) {
+                // Hide typing indicator
+                typingIndicator.style.display = 'none';
+                
+                const errorResult = document.createElement('div');
+                errorResult.className = 'message ai';
+                errorResult.innerHTML = `
+                    <strong>❌ Connection Error:</strong><br><br>
+                    Unable to connect to the analysis service. Please check your connection and try again.
+                `;
+                chatMessages.appendChild(errorResult);
+            }
+            
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+        
+        async function sendMessage() {
+            const chatInput = document.getElementById('chat-input');
+            const sendBtn = document.getElementById('send-btn');
+            const message = chatInput.value.trim();
+            
+            if (!message) return;
+            
+            // Add user message to chat
+            const chatMessages = document.getElementById('chat-messages');
+            const userMessage = document.createElement('div');
+            userMessage.className = 'message user';
+            userMessage.textContent = message;
+            chatMessages.appendChild(userMessage);
+            
+            // Clear input and disable send button
+            chatInput.value = '';
+            sendBtn.disabled = true;
+            
+            // Show typing indicator
+            const typingIndicator = document.getElementById('typing-indicator');
+            typingIndicator.style.display = 'block';
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+            
+            try {
+                const response = await fetch('/api/system-chatbots/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        chatbot_name: 'bias_analyst',
+                        message: `Context: ${currentVignette}\n\nUser question: ${message}`
+                    })
+                });
+                
+                const data = await response.json();
+                
+                // Hide typing indicator
+                typingIndicator.style.display = 'none';
+                
+                if (data.response) {
+                    // Add AI response to chat
+                    const aiMessage = document.createElement('div');
+                    aiMessage.className = 'message ai';
+                    aiMessage.innerHTML = data.response.replace(/\n/g, '<br>');
+                    chatMessages.appendChild(aiMessage);
+                } else {
+                    // Error message
+                    const errorMessage = document.createElement('div');
+                    errorMessage.className = 'message ai';
+                    errorMessage.innerHTML = 'Sorry, I encountered an error. Please try again.';
+                    chatMessages.appendChild(errorMessage);
+                }
+            } catch (error) {
+                // Hide typing indicator
+                typingIndicator.style.display = 'none';
+                
+                const errorMessage = document.createElement('div');
+                errorMessage.className = 'message ai';
+                errorMessage.innerHTML = 'Connection error. Please check your network and try again.';
+                chatMessages.appendChild(errorMessage);
+            }
+            
+            // Re-enable send button
+            sendBtn.disabled = false;
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+        
+        function returnToStories() {
+            document.getElementById('chat-interface').classList.remove('active');
+            document.querySelectorAll('.content-panel')[0].style.display = 'block';
+            document.querySelectorAll('.content-panel')[0].scrollIntoView({ behavior: 'smooth' });
+        }
+        
+        // Allow Enter key to send message
+        document.addEventListener('DOMContentLoaded', function() {
+            // Check if user came from story form submission
+            const submittedVignette = sessionStorage.getItem('submittedVignette');
+            const fromStoryForm = sessionStorage.getItem('fromStoryForm');
+            
+            if (submittedVignette && fromStoryForm === 'true') {
+                // Clear the session storage flags
+                sessionStorage.removeItem('submittedVignette');
+                sessionStorage.removeItem('fromStoryForm');
+                
+                // Set the current vignette
+                currentVignette = submittedVignette;
+                
+                // Automatically show chat interface and start bias discussion
+                setTimeout(() => {
+                    document.getElementById('chat-interface').classList.add('active');
+                    document.getElementById('chat-interface').scrollIntoView({ behavior: 'smooth' });
+                    
+                    // Add vignette to chat as context
+                    const chatMessages = document.getElementById('chat-messages');
+                    const vignetteMessage = document.createElement('div');
+                    vignetteMessage.className = 'message user';
+                    vignetteMessage.innerHTML = `<strong>My submitted story:</strong><br>${submittedVignette}`;
+                    chatMessages.appendChild(vignetteMessage);
+                    
+                    // Send initial bias analysis request
+                    setTimeout(() => {
+                        performBiasAnalysis();
+                    }, 500);
+                    
+                }, 1000);
+            }
+            
+            const chatInput = document.getElementById('chat-input');
+            if (chatInput) {
+                chatInput.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') {
+                        sendMessage();
+                    }
+                });
+            }
+        });
+        
+        // Create navigation bar
+        createNavigationHeader();
     </script>
 </body>
 </html>

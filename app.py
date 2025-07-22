@@ -1,14 +1,13 @@
-from flask import Flask, request, jsonify, render_template, redirect, url_for, session, flash, send_from_directory, send_file, render_template_string
+from flask import Flask, request, jsonify, render_template, redirect, url_for, session, flash, send_from_directory, send_file, render_template_string, abort
 from flask_cors import CORS
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
 import os
 import sqlite3
-import pandas as pd
 import openai
 import google.generativeai as genai
-from config import get_ai_configuration, LOGIN_TEMPLATE, CHAT_SYSTEM_PROMPT, load_bias_analysis_prompt
+from config import get_ai_configuration, LOGIN_TEMPLATE, ADMIN_ACCESS_DENIED_TEMPLATE, CHAT_SYSTEM_PROMPT, load_bias_analysis_prompt, load_system_prompt, list_available_prompts
 from API_Settings import GOOGLE_API_KEY, OPENAI_API_KEY, DEFAULT_AI_SERVICE, DEFAULT_GOOGLE_MODEL, DEFAULT_OPENAI_MODEL, is_service_available
 import bcrypt
 import uuid
@@ -17,12 +16,14 @@ from logging.handlers import RotatingFileHandler
 import json
 from datetime import datetime, timedelta
 import random
-import csv
 import time
 import traceback
 import sys
 
+
+
 # Enhanced logging functions
+
 def log_chat_interaction(user_id, chat_type, message_type, content, context_data=None, ai_model=None, ai_response=None, processing_time=None):
     """Log chat interactions to central SQLite database - persistent and reliable"""
     try:
@@ -70,8 +71,23 @@ def log_chat_interaction(user_id, chat_type, message_type, content, context_data
             user_info = db.get_user_by_email(user_id)
             if user_info:
                 user_db_id = user_info['id']
-        except:
-            pass
+                print(f"✅ Found user {user_id} with DB ID: {user_db_id}")
+            else:
+                print(f"⚠️  User not found in database: {user_id}")
+        except Exception as e:
+            print(f"❌ Error getting user ID for {user_id}: {e}")
+            # Fallback: try to get user ID directly
+            try:
+                conn_user = sqlite3.connect('laila_central.db')
+                cursor_user = conn_user.cursor()
+                cursor_user.execute("SELECT id FROM users WHERE email = ?", (user_id,))
+                result = cursor_user.fetchone()
+                if result:
+                    user_db_id = result[0]
+                    print(f"✅ Fallback: Found user {user_id} with DB ID: {user_db_id}")
+                conn_user.close()
+            except Exception as e2:
+                print(f"❌ Fallback also failed: {e2}")
 
         # Prepare data for database
         module = chat_type.replace('_chat', '').replace('_', ' ').title()
@@ -101,177 +117,12 @@ def log_chat_interaction(user_id, chat_type, message_type, content, context_data
         conn.commit()
         conn.close()
         
-        # Also create CSV backup for immediate access (optional fallback)
-        try:
-            log_entry = {
-                'timestamp': timestamp, 'user': user_id, 'module': module, 'sender': sender,
-                'turn': turn, 'message': message, 'ai_model': ai_model_used, 
-                'response_time_sec': response_time, 'context': context
-            }
-            
-            clean_logs_file = 'chat_logs_clean.csv'
-            df = pd.DataFrame([log_entry])
-            
-            if os.path.exists(clean_logs_file):
-                df.to_csv(clean_logs_file, mode='a', header=False, index=False, encoding='utf-8')
-            else:
-                df.to_csv(clean_logs_file, index=False, encoding='utf-8')
-        except:
-            pass  # SQLite is primary, CSV is just backup
+
         
     except Exception as e:
         print(f"Error logging chat interaction to central database: {str(e)}")
-        # Fallback to CSV if database fails
-        try:
-            log_entry = {
-                'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-                'user': user_id,
-                'module': chat_type.replace('_chat', '').replace('_', ' ').title(),
-                'sender': 'User' if message_type == 'user_input' else 'AI',
-                'turn': session.get(f'turn_count_{session.get("chat_id", "unknown")}', 1),
-                'message': content if message_type == 'user_input' else ai_response,
-                'ai_model': ai_model if message_type == 'ai_response' else '',
-                'response_time_sec': round(processing_time / 1000, 2) if processing_time and message_type == 'ai_response' else '',
-                'context': str(context_data) if context_data else ''
-            }
-            
-            df = pd.DataFrame([log_entry])
-            df.to_csv('chat_logs_fallback.csv', mode='a', header=not os.path.exists('chat_logs_fallback.csv'), index=False)
-        except:
-            pass
 
-# Keep original function for technical logs (renamed for system debugging)
-def log_chat_interaction_detailed(user_id, chat_type, message_type, content, context_data=None, ai_model=None, ai_response=None, processing_time=None):
-    """Log all chat interactions with exhaustive technical details for debugging"""
-    try:
-        timestamp = datetime.now().isoformat()
-        session_id = session.get('session_id', str(uuid.uuid4()))
-        chat_id = session.get('chat_id', str(uuid.uuid4()))
-        
-        # Ensure chat_id is set in session
-        if 'chat_id' not in session:
-            session['chat_id'] = chat_id
-        
-        # Clean and prepare content for CSV
-        def clean_for_csv(text):
-            if text is None:
-                return ""
-            cleaned = str(text).replace('\n', ' ').replace('\r', ' ').replace('\t', ' ')
-            cleaned = ' '.join(cleaned.split())
-            return cleaned[:5000] if len(cleaned) > 5000 else cleaned
-        
-        # Clean context data
-        context_str = ""
-        if context_data:
-            try:
-                context_items = []
-                for key, value in context_data.items():
-                    if value is not None:
-                        context_items.append(f"{key}:{clean_for_csv(str(value))}")
-                context_str = " | ".join(context_items)
-            except:
-                context_str = "context_error"
-        
-        log_entry = {
-            'timestamp': timestamp,
-            'user_id': user_id,
-            'session_id': session_id,
-            'chat_id': chat_id,
-            'chat_type': chat_type,
-            'message_type': message_type,
-            'content': clean_for_csv(content),
-            'content_length': len(content) if content else 0,
-            'ai_model': ai_model or "",
-            'ai_response': clean_for_csv(ai_response),
-            'ai_response_length': len(ai_response) if ai_response else 0,
-            'processing_time_ms': processing_time or 0,
-            'context_data': context_str,
-            'user_agent': request.headers.get('User-Agent', '')[:200],
-            'ip_address': request.remote_addr,
-            'page_url': request.url[:500],
-            'request_method': request.method
-        }
-        
-        # Save to detailed logs for debugging (only if needed)
-        debug_logs_file = 'chat_logs_debug.csv'
-        df = pd.DataFrame([log_entry])
-        
-        if os.path.exists(debug_logs_file):
-            df.to_csv(debug_logs_file, mode='a', header=False, index=False, encoding='utf-8')
-        else:
-            df.to_csv(debug_logs_file, index=False, encoding='utf-8')
-        
-    except Exception as e:
-        print(f"Error logging detailed chat interaction: {str(e)}")
 
-def log_data_analysis(user_id, analysis_type, input_data, generated_data, ai_model=None, processing_time=None, additional_context=None):
-    """Log data analysis operations with full details using proper CSV format"""
-    try:
-        timestamp = datetime.now().isoformat()
-        session_id = session.get('session_id', str(uuid.uuid4()))
-        
-        # Clean and prepare content for CSV
-        def clean_for_csv(text):
-            if text is None:
-                return ""
-            # Replace newlines with spaces and clean up extra whitespace
-            cleaned = str(text).replace('\n', ' ').replace('\r', ' ').replace('\t', ' ')
-            # Remove multiple spaces
-            cleaned = ' '.join(cleaned.split())
-            # Truncate if too long to prevent CSV issues
-            return cleaned[:3000] if len(cleaned) > 3000 else cleaned
-        
-        # Clean context data
-        context_str = ""
-        if additional_context:
-            try:
-                # Convert context to a simple string representation
-                context_items = []
-                for key, value in additional_context.items():
-                    if value is not None:
-                        context_items.append(f"{key}:{clean_for_csv(str(value))}")
-                context_str = " | ".join(context_items)
-            except:
-                context_str = "context_error"
-        
-        log_entry = {
-            'timestamp': timestamp,
-            'user_id': user_id,
-            'session_id': session_id,
-            'analysis_type': analysis_type,
-            'input_data_type': type(input_data).__name__,
-            'input_data_length': len(str(input_data)) if input_data else 0,
-            'input_data_sample': clean_for_csv(input_data),
-            'generated_data_type': type(generated_data).__name__,
-            'generated_data_length': len(str(generated_data)) if generated_data else 0,
-            'generated_data_sample': clean_for_csv(generated_data),
-            'ai_model': ai_model or "",
-            'processing_time_ms': processing_time or 0,
-            'additional_context': context_str,
-            'user_agent': request.headers.get('User-Agent', '')[:200],  # Truncate long user agents
-            'ip_address': request.remote_addr,
-            'page_url': request.url[:500]  # Truncate long URLs
-        }
-        
-        # Save to data analysis logs CSV with proper encoding and quoting
-        analysis_logs_file = 'data_analysis_logs.csv'
-        df = pd.DataFrame([log_entry])
-        
-        if os.path.exists(analysis_logs_file):
-            # Append to existing file
-            df.to_csv(analysis_logs_file, mode='a', header=False, index=False, 
-                     quoting=1,  # QUOTE_ALL - quote all fields
-                     escapechar='\\',  # Escape special characters
-                     encoding='utf-8')
-        else:
-            # Create new file with headers
-            df.to_csv(analysis_logs_file, index=False, 
-                     quoting=1,  # QUOTE_ALL - quote all fields
-                     escapechar='\\',  # Escape special characters
-                     encoding='utf-8')
-        
-    except Exception as e:
-        print(f"Error logging data analysis: {str(e)}")
 
 # Initialize session ID for new users
 def initialize_session():
@@ -281,15 +132,17 @@ def initialize_session():
     if 'chat_id' not in session:
         session['chat_id'] = str(uuid.uuid4())
 
-# Legacy function for backward compatibility
-    """Legacy logging function - now calls the new detailed logging"""
-    user_id = current_user.email if current_user.is_authenticated else 'anonymous'
+
+
 app = Flask(__name__, static_folder='.', static_url_path='')
 app.secret_key = os.urandom(24)
-app.config['PERMANENT_SESSION_LIFETIME'] = 86400  # 24 hours
+app.config['PERMANENT_SESSION_LIFETIME'] = 604800  # 7 days (7 * 24 * 60 * 60)
 app.config['SESSION_COOKIE_SECURE'] = False  # Set to True in production with HTTPS
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+app.config['REMEMBER_COOKIE_DURATION'] = 2592000  # 30 days for remember me
+app.config['REMEMBER_COOKIE_SECURE'] = False  # Set to True in production with HTTPS
+app.config['REMEMBER_COOKIE_HTTPONLY'] = True
 CORS(app)  # Enable CORS for all routes
 
 login_manager = LoginManager()
@@ -308,18 +161,23 @@ class User(UserMixin):
 
 @login_manager.user_loader
 def load_user(user_id):
-    users_df = get_users_df()
-    user_data = users_df[users_df['email'] == user_id]
-    if not user_data.empty:
-        is_admin = False
-        if 'is_admin' in user_data.columns:
-            is_admin = str(user_data.iloc[0]['is_admin']).lower() == 'true'
-        return User(user_data.iloc[0]['email'], user_data.iloc[0]['fullname'], user_data.iloc[0]['email'], is_admin)
+    try:
+        conn = sqlite3.connect('laila_user.db')
+        cursor = conn.cursor()
+        cursor.execute('SELECT fullname, email, is_admin FROM users WHERE email = ?', (user_id,))
+        user_data = cursor.fetchone()
+        conn.close()
+        
+        if user_data:
+            fullname, email, is_admin = user_data
+            return User(email, fullname, email, bool(is_admin))
+    except Exception as e:
+        print(f"Error loading user: {e}")
     return None
 
-# Import unified API settings
+# Import unified API settings with priority fallback
 from API_Settings import (
-    get_api_key, get_default_model, is_service_available, get_fallback_service,
+    get_api_key, get_default_model, is_service_available, get_fallback_service, get_ai_config,
     GOOGLE_API_KEY, DEFAULT_AI_SERVICE, DEFAULT_GOOGLE_MODEL, DEFAULT_OPENAI_MODEL
 )
 import google.generativeai as genai
@@ -331,56 +189,134 @@ if GOOGLE_API_KEY:
 
 # --- User Authentication ---
 
-def get_users_df():
-    if not os.path.exists('users.csv'):
-        df = pd.DataFrame(columns=['fullname', 'email', 'password'])
-        df.to_csv('users.csv', index=False)
-        return df
-    return pd.read_csv('users.csv')
 
-def save_users_df(df):
-    df.to_csv('users.csv', index=False)
 
-@app.route('/login', methods=['GET', 'POST'])
+@app.route('/', methods=['GET', 'POST'])
 def login():
     if current_user.is_authenticated:
         return redirect(url_for('main_menu'))
     
     if request.method == 'POST':
         fullname = request.form.get('fullname', '').strip()
-        email = request.form.get('email', '').strip()
+        email = request.form.get('email', '').strip().lower()  # Normalize email
         password = request.form.get('password', '')
         action = request.form.get('action', 'login')  # 'login' or 'register'
+        remember_me = request.form.get('remember_me') == 'on'  # Checkbox value
         
+        # Enhanced input validation
         if not email or not password:
-            return render_template_string(LOGIN_TEMPLATE, error="Email and password are required.")
+            return render_template_string(LOGIN_TEMPLATE, 
+                                        error="Both email and password are required.",
+                                        email=email)
         
-        users_df = get_users_df()
-        user = users_df[users_df['email'] == email]
+        # Validate email format
+        if '@' not in email or '.' not in email.split('@')[-1]:
+            return render_template_string(LOGIN_TEMPLATE,
+                                        error="Please enter a valid email address.",
+                                        email=email)
         
-        if action == 'register':
-            # Registration flow
-            if not fullname:
-                return render_template_string(LOGIN_TEMPLATE, error="Full name is required for registration.")
+        # Validate password length
+        if len(password) < 6:
+            return render_template_string(LOGIN_TEMPLATE,
+                                        error="Password must be at least 6 characters long.",
+                                        email=email)
+        
+        # Check if user exists in database
+        try:
+            conn = sqlite3.connect('laila_user.db')
+            cursor = conn.cursor()
+            cursor.execute('SELECT fullname, email, password_hash FROM users WHERE email = ?', (email,))
+            user = cursor.fetchone()
             
-            if not user.empty:
-                return render_template_string(LOGIN_TEMPLATE, error="An account with this email already exists. Please login instead.")
-            
-            # Create new user
-            hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-            new_user = pd.DataFrame([[fullname, email, hashed_password]], columns=['fullname', 'email', 'password'])
-            users_df = pd.concat([users_df, new_user], ignore_index=True)
-            save_users_df(users_df)
-            
-            # Log in the new user
-            user_obj = User(email, fullname, email)
-            login_user(user_obj, remember=True)
-            session.permanent = True
-            
-            # Initialize session tracking
-            initialize_session()
-            
-            # Log successful registration
+            if action == 'register':
+                # Registration flow
+                if not fullname or len(fullname.strip()) < 2:
+                    conn.close()
+                    return render_template_string(LOGIN_TEMPLATE, 
+                                                error="Please enter your full name (at least 2 characters).",
+                                                show_register=True, email=email)
+                
+                if user:
+                    conn.close()
+                    return render_template_string(LOGIN_TEMPLATE, 
+                                                error="An account with this email already exists. Please use the login form instead.",
+                                                email=email)
+                
+                # Create new user
+                hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+                cursor.execute('''
+                    INSERT INTO users (fullname, email, password_hash, is_admin, created_at, is_active)
+                    VALUES (?, ?, ?, ?, datetime('now'), ?)
+                ''', (fullname, email, hashed_password, False, True))
+                conn.commit()
+                conn.close()
+                
+                # Log in the new user
+                user_obj = User(email, fullname, email)
+                # For registration, default to remember=True for better UX
+                login_user(user_obj, remember=True)
+                session.permanent = True
+                
+                # Initialize session tracking
+                initialize_session()
+                
+                print(f"✅ New user registered and logged in: {email}")
+                return redirect(url_for('main_menu'))
+                
+            else:
+                # Login flow
+                if not user:
+                    conn.close()
+                    return render_template_string(LOGIN_TEMPLATE, 
+                                                error="No account found with this email address. Please check your email or register for a new account.",
+                                                email=email)
+                
+                # Check password
+                fullname, email_db, hashed_password = user
+                # Handle both string and bytes password hashes
+                if isinstance(hashed_password, str):
+                    hash_to_check = hashed_password.encode('utf-8')
+                else:
+                    hash_to_check = hashed_password
+                
+                if bcrypt.checkpw(password.encode('utf-8'), hash_to_check):
+                    # Update last login timestamp
+                    try:
+                        cursor.execute('''
+                            UPDATE users SET last_login = datetime('now') WHERE email = ?
+                        ''', (email,))
+                        conn.commit()
+                    except sqlite3.OperationalError as e:
+                        print(f"⚠️  Warning: Could not update last_login: {e}")
+                        # Continue with login even if last_login update fails
+                    conn.close()
+                    
+                    user_obj = load_user(email)
+                    login_user(user_obj, remember=remember_me)
+                    session.permanent = True
+                    
+                    # Initialize session tracking
+                    initialize_session()
+                    
+                    print(f"✅ Successful login: {email}")
+                    print(f"   Remember me: {remember_me}")
+                    print(f"   Session lifetime: {app.config['PERMANENT_SESSION_LIFETIME']/86400:.1f} days")
+                    print(f"   Remember cookie lifetime: {app.config['REMEMBER_COOKIE_DURATION']/86400:.1f} days")
+                    return redirect(url_for('main_menu'))
+                else:
+                    conn.close()
+                    return render_template_string(LOGIN_TEMPLATE, 
+                                                error="Incorrect password. Please try again or use 'Forgot your password?' to reset it.",
+                                                email=email)
+        
+        except Exception as e:
+            print(f"❌ Database error during login: {e}")
+            import traceback
+            traceback.print_exc()
+            return render_template_string(LOGIN_TEMPLATE, 
+                                        error="A system error occurred. Please try again in a moment.",
+                                        email=email)
+
     return render_template_string(LOGIN_TEMPLATE)
 
 @app.route('/register', methods=['GET'])
@@ -392,32 +328,89 @@ def register():
 @app.route('/logout')
 @login_required
 def logout():
-    # Log logout action
-# --- Enhanced Logging Function ---
-    user_id = current_user.email if current_user.is_authenticated else 'anonymous'
-    fullname = current_user.fullname if current_user.is_authenticated else 'anonymous'
+    logout_user()
+    session.clear()
+    return redirect(url_for('login'))
 
-    interaction_data = {
-        'timestamp': pd.Timestamp.now().isoformat(),
-        'user_id': user_id,
-        'fullname': fullname,
-        'email': user_id, # email is user_id
-        'interaction_type': interaction_type,
-        'page': page,
-        'action': action, # Using tool_name as action
-        'details': details,
-        'session_data': str(session),
-        'ai_model': ai_model,
-        'ai_response': ai_response
-    }
-    
-    df = pd.DataFrame([interaction_data])
-    interactions_file = 'user_interactions.csv'
-    if not os.path.exists(interactions_file):
-        df.to_csv(interactions_file, index=False, sep=';')
-    else:
-        df.to_csv(interactions_file, mode='a', header=False, index=False, sep=';')
 
+
+
+
+# --- Missing Logging Functions ---
+def log_user_interaction(user_id, interaction_type=None, page=None, action=None, element_id=None, element_type=None, element_value=None, additional_data=None):
+    """Log user interactions to database"""
+    try:
+        timestamp = datetime.now().isoformat()
+        
+        # Use action as interaction_type if provided (for backwards compatibility)
+        actual_interaction_type = action if action else interaction_type
+        
+        # Get user database ID from email (users are in laila_user.db, need to sync to central)
+        user_db_id = None
+        try:
+            # First check laila_central.db
+            conn_central = sqlite3.connect('laila_central.db')
+            cursor_central = conn_central.cursor()
+            cursor_central.execute("SELECT id FROM users WHERE email = ?", (user_id,))
+            result = cursor_central.fetchone()
+            if result:
+                user_db_id = result[0]
+            else:
+                # If not found, try to sync from laila_user.db
+                conn_user = sqlite3.connect('laila_user.db')
+                cursor_user = conn_user.cursor()
+                cursor_user.execute("SELECT id, fullname, email, is_admin FROM users WHERE email = ?", (user_id,))
+                user_data = cursor_user.fetchone()
+                if user_data:
+                    uid, fullname, email, is_admin = user_data
+                    # Insert into central database
+                    cursor_central.execute("""
+                        INSERT OR IGNORE INTO users (id, fullname, email, is_admin, created_at) 
+                        VALUES (?, ?, ?, ?, datetime('now'))
+                    """, (uid, fullname, email, is_admin))
+                    conn_central.commit()
+                    user_db_id = uid
+                    print(f"✅ Synced user {email} to central database with ID {uid}")
+                conn_user.close()
+            conn_central.close()
+        except Exception as e:
+            print(f"⚠️  Could not get user ID for {user_id}: {e}")
+        
+        # Save to database
+        conn = sqlite3.connect('laila_central.db')
+        cursor = conn.cursor()
+        
+        # Convert additional_data to string if it's a dict
+        additional_data_str = str(additional_data) if additional_data else None
+        
+        cursor.execute('''
+            INSERT INTO user_interactions 
+            (user_id, interaction_type, page, action, element_id, element_type, element_value, timestamp, additional_data)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (user_db_id, actual_interaction_type, page, action, element_id, element_type, element_value, timestamp, additional_data_str))
+        
+        conn.commit()
+        conn.close()
+        
+        # Also log to console for debugging
+        print(f"✅ USER INTERACTION: {timestamp} | {user_id} | {actual_interaction_type} | {page}")
+        if element_id:
+            print(f"  Element: {element_type}#{element_id} = {element_value}")
+            
+    except Exception as e:
+        print(f"❌ Error logging user interaction: {e}")
+
+def log_data_analysis(user_id, analysis_type, input_data, generated_data, ai_model=None, processing_time=None, additional_context=None):
+    """Log data analysis operations - simplified version"""
+    try:
+        timestamp = datetime.now().isoformat()
+        print(f"DATA ANALYSIS: {timestamp} | {user_id} | {analysis_type} | Model: {ai_model} | Time: {processing_time}ms")
+        print(f"  Input length: {len(input_data) if input_data else 0} chars")
+        print(f"  Output length: {len(generated_data) if generated_data else 0} chars")
+        if additional_context:
+            print(f"  Context: {additional_context}")
+    except Exception as e:
+        print(f"Error logging data analysis: {e}")
 
 # Unified AI function using API_Settings
 def make_ai_call(prompt, system_prompt=None, service=None, model=None, user_api_key=None):
@@ -425,9 +418,10 @@ def make_ai_call(prompt, system_prompt=None, service=None, model=None, user_api_
     Make AI call using unified API system - Clean, Simple, Robust
     """
     try:
-        # Use default service if not specified
+        # Use priority service if not specified (Google first, OpenAI fallback)
         if not service:
-            service = DEFAULT_AI_SERVICE
+            config = get_ai_config()
+            service = config['primary_service']
         
         # Get default model for service if not specified
         if not model:
@@ -440,10 +434,16 @@ def make_ai_call(prompt, system_prompt=None, service=None, model=None, user_api_
         
         # Get API key with proper fallback
         api_key = get_api_key(service, user_api_key)
-        if not api_key:
-            raise Exception(f"No API key available for {service}. Please check API_Settings.py")
+        if not api_key or api_key in ["your-google-api-key-here", "your-openai-api-key-here"]:
+            config = get_ai_config()
+            # Try fallback service if primary not available
+            if config.get('fallback_service') and service != config['fallback_service']:
+                print(f"🔄 Primary service {service} not available, switching to {config['fallback_service']}")
+                return make_ai_call(prompt, system_prompt, config['fallback_service'], model, user_api_key)
+            else:
+                raise Exception(f"No valid API key available for {service}. Using test mode.")
         
-        print(f"Using AI service: {service}, model: {model}, key available: {bool(api_key)}")
+        print(f"🎯 Using primary AI service: {service}, model: {model}")
         
         if service == 'google':
             # Configure Google AI with fresh key
@@ -483,20 +483,67 @@ def make_ai_call(prompt, system_prompt=None, service=None, model=None, user_api_
         
         # Try fallback service if primary fails and no user key specified
         if not user_api_key:
-            if service != 'google' and is_service_available('google'):
-                print(f"Trying fallback to Google AI...")
+            config = get_ai_config()
+            if config.get('fallback_service') and service != config['fallback_service']:
+                print(f"🔄 Trying fallback to {config['fallback_service']}...")
                 try:
-                    return make_ai_call(prompt, system_prompt, 'google', None, None)
-                except:
-                    pass
-            elif service != 'openai' and is_service_available('openai'):
-                print(f"Trying fallback to OpenAI...")
-                try:
-                    return make_ai_call(prompt, system_prompt, 'openai', None, None)
-                except:
-                    pass
+                    return make_ai_call(prompt, system_prompt, config['fallback_service'], None, None)
+                except Exception as fallback_error:
+                    print(f"Fallback also failed: {str(fallback_error)}")
         
-        raise Exception(error_msg)
+        # Final fallback to test mode
+        print("⚠️ All AI services failed, using test mode")
+        return get_test_response(prompt, system_prompt), "test-mode"
+
+def get_test_response(prompt, system_prompt=None):
+    """Generate test response when no AI service is available"""
+    if system_prompt and "bias" in system_prompt.lower():
+        return """Thank you for sharing this content for bias analysis. In a real scenario, I would analyze this content for various forms of bias including:
+
+1. **Gender bias** - Looking for stereotypical portrayals or assumptions
+2. **Cultural bias** - Examining cultural assumptions or preferences  
+3. **Socioeconomic bias** - Identifying class-based assumptions
+4. **Confirmation bias** - Checking for one-sided perspectives
+5. **Selection bias** - Looking at whose voices are included/excluded
+
+*Note: This is a test response. Configure your API keys in API_Settings.py for full AI analysis.*
+
+Would you like me to focus on any particular type of bias?"""
+    
+    elif system_prompt and "prompt" in system_prompt.lower():
+        return """I'd be happy to help you create an effective AI prompt using the PCTFT framework! Let me start by understanding what you're trying to accomplish.
+
+**PCTFT Framework:**
+- **P**ersona: Who should the AI be?
+- **C**ontext: What's the background?
+- **T**ask: What specific action?
+- **F**ormat: What output structure?
+- **T**arget: Who's the audience?
+
+*Note: This is a test response. Configure your API keys in API_Settings.py for full prompt engineering assistance.*
+
+What kind of prompt are you looking to create?"""
+    
+    elif system_prompt and "data" in system_prompt.lower():
+        return """I'd be happy to help you interpret your data! I can assist with:
+
+- **Statistical Analysis**: Descriptive statistics, correlations, significance tests
+- **Data Visualization**: Suggesting appropriate charts and graphs
+- **Pattern Recognition**: Identifying trends and outliers
+- **Academic Interpretation**: Relating findings to research questions
+
+*Note: This is a test response. Configure your API keys in API_Settings.py for full data interpretation.*
+
+Please share your data or describe what you'd like to analyze!"""
+    
+    else:
+        return f"""Hello! I'm here to help with your questions. 
+
+*Note: This is a test response. To enable full AI functionality, please configure your API keys in API_Settings.py*
+
+Your message: "{prompt[:100]}{'...' if len(prompt) > 100 else ''}"
+
+How can I assist you today?"""
 
 # --- Helper: Admin Auth Decorator ---
 def require_admin(f):
@@ -521,82 +568,164 @@ def require_true_admin(f):
 def test():
     return jsonify({'status': 'Backend is running!'})
 
-# --- Serve HTML files ---
-@app.route('/')
-def index():
-    return send_file('login.html')
+# --- Debug Endpoints (No Auth Required) ---
+@app.route('/api/debug/data-status', methods=['GET'])
+def debug_data_status():
+    """Debug endpoint to check data availability"""
+    try:
+        conn = sqlite3.connect('laila_central.db')
+        cursor = conn.cursor()
+        
+        # Count records
+        cursor.execute("SELECT COUNT(*) FROM chat_logs")
+        chat_count = cursor.fetchone()[0]
+        
+        cursor.execute("SELECT COUNT(*) FROM user_interactions")
+        interaction_count = cursor.fetchone()[0]
+        
+        # Check current user status
+        user_status = {
+            'authenticated': current_user.is_authenticated,
+            'is_admin': getattr(current_user, 'is_admin', False) if current_user.is_authenticated else False,
+            'email': getattr(current_user, 'email', None) if current_user.is_authenticated else None
+        }
+        
+        conn.close()
+        
+        return jsonify({
+            'success': True,
+            'data_status': {
+                'chat_logs': chat_count,
+                'user_interactions': interaction_count
+            },
+            'user_status': user_status,
+            'timestamp': datetime.now().isoformat()
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'timestamp': datetime.now().isoformat()
+        })
+
+@app.route('/api/debug/chat-logs-sample', methods=['GET'])  
+def debug_chat_logs_sample():
+    """Debug endpoint to get sample chat logs (no auth required)"""
+    try:
+        conn = sqlite3.connect('laila_central.db')
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            SELECT 
+                cl.timestamp,
+                u.email as user_email,
+                cl.module,
+                cl.sender,
+                LENGTH(cl.message) as message_length
+            FROM chat_logs cl
+            LEFT JOIN users u ON cl.user_id = u.id
+            ORDER BY cl.timestamp DESC
+            LIMIT 5
+        """)
+        
+        logs = []
+        for row in cursor.fetchall():
+            logs.append({
+                'timestamp': row[0],
+                'user_email': row[1],
+                'module': row[2],
+                'sender': row[3],
+                'message_length': row[4]
+            })
+        
+        conn.close()
+        return jsonify({'success': True, 'sample_logs': logs})
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+
 
 @app.route('/index.html')
 @login_required
 def traditional_form():
-    return send_file('index.html')
+    return send_file('views/index.html')
 
-@app.route('/admin.html')
+@app.route('/admin')
 @login_required
-@require_true_admin
 def admin():
-    return send_file('admin.html')
+    # Check if user is admin
+    if not getattr(current_user, 'is_admin', False):
+        return render_template_string(ADMIN_ACCESS_DENIED_TEMPLATE, 
+                                    user_name=current_user.fullname or current_user.email)
+    return send_file('views/admin.html')
 
-@app.route('/test-connection.html')
+@app.route('/test-connection')
 @login_required
 def test_connection():
-    return send_file('test-connection.html')
+    return send_file('views/test-connection.html')
 
-@app.route('/chat.html')
+@app.route('/chat')
 @login_required
 def chat():
-    return send_file('chat.html')
+    return send_file('views/chat.html')
 
-@app.route('/story-form.html')
+@app.route('/story-form')
 @login_required
 def story_form():
-    return send_file('story-form.html')
+    return send_file('views/story-form.html')
 
-@app.route('/prompt-helper.html')
+@app.route('/prompt-helper')
 @login_required
 def prompt_helper():
-    return send_file('prompt-helper.html')
+    return send_file('views/prompt-helper.html')
 
-@app.route('/data-analyzer.html')
+@app.route('/data-analyzer')
 @login_required
 def data_analyzer():
-    return send_file('data-analyzer.html')
+    return send_file('views/data-analyzer.html')
 
-@app.route('/main-menu.html')
+@app.route('/main-menu')
 @login_required
 def main_menu():
-    return send_file('main-menu.html')
+    return send_file('views/main-menu.html')
 
-@app.route('/bias-research-platform.html')
+@app.route('/bias-research-platform')
 @login_required
 def bias_research_platform():
-    return send_file('bias-research-platform.html')
+    return send_file('views/bias-research-platform.html')
 
-@app.route('/chatbot-config.html')
+@app.route('/chatbot-config')
 @login_required
 def chatbot_config():
-    return send_file('chatbot-config.html')
+    return send_file('views/chatbot-config.html')
 
-@app.route('/chatbot-interface.html')
+@app.route('/chatbot-interface')
 @login_required
 def chatbot_interface():
-    return send_file('chatbot-interface.html')
+    return send_file('views/chatbot-interface.html')
 
-@app.route('/user-settings.html')
+@app.route('/test-chatbots')
+@login_required
+def test_chatbots():
+    return send_file('views/test-chatbots.html')
+
+@app.route('/user-settings')
 @login_required
 def user_settings():
-    return send_file('user-settings.html')
+    return send_file('views/user-settings.html')
 
-@app.route('/analytics.html')
+@app.route('/analytics')
 @login_required
 def analytics():
-    return send_file('analytics.html')
+    return send_file('views/analytics.html')
 
-@app.route('/logs.html')
+@app.route('/logs')
 @login_required
 @require_true_admin
 def logs():
-    return send_file('logs.html')
+    return send_file('views/logs.html')
 
 # --- Endpoint: Get User Settings ---
 @app.route('/api/user-settings', methods=['GET'])
@@ -670,6 +799,7 @@ def save_user_settings():
         settings_df.to_csv(settings_file, index=False)
         
         # Log the action
+        log_interaction('settings_update', 'user_settings', 'save_settings', details=settings_data)
         
         return jsonify({'success': True, 'message': 'Settings saved successfully'})
         
@@ -686,17 +816,47 @@ def get_user_info():
             'user': {
                 'id': current_user.id,
                 'fullname': current_user.fullname,
-                'email': current_user.email
+                'email': current_user.email,
+                'is_admin': getattr(current_user, 'is_admin', False)
             },
             'authenticated': True
         })
     else:
         return jsonify({'authenticated': False}), 401
 
+# --- Endpoint: Session Status ---
+@app.route('/api/session-status', methods=['GET'])
+@login_required  
+def session_status():
+    """Get session status and expiration info"""
+    from datetime import datetime, timedelta
+    
+    session_expires = None
+    remember_expires = None
+    
+    if session.permanent:
+        session_expires = datetime.now() + timedelta(seconds=app.config['PERMANENT_SESSION_LIFETIME'])
+    
+    # Check if remember cookie exists
+    remember_token = request.cookies.get('remember_token')
+    if remember_token:
+        remember_expires = datetime.now() + timedelta(seconds=app.config['REMEMBER_COOKIE_DURATION'])
+    
+    return jsonify({
+        'authenticated': True,
+        'session_permanent': session.permanent,
+        'session_expires': session_expires.isoformat() if session_expires else None,
+        'remember_expires': remember_expires.isoformat() if remember_expires else None,
+        'current_time': datetime.now().isoformat(),
+        'session_lifetime_days': app.config['PERMANENT_SESSION_LIFETIME'] / 86400,
+        'remember_lifetime_days': app.config['REMEMBER_COOKIE_DURATION'] / 86400
+    })
+
 # --- Endpoint: Get Field Explanations ---
 @app.route('/api/field-help/<field_name>', methods=['GET'])
 def get_field_help(field_name):
     """Get explanation and example for a specific field"""
+    log_interaction('tool_usage', 'get_field_help', 'get_field_help', details={'field_name': field_name})
     explanation = get_field_explanation(field_name)
     return jsonify(explanation)
 
@@ -704,6 +864,7 @@ def get_field_help(field_name):
 @app.route('/api/sample-data/<field_name>', methods=['GET'])
 def get_sample_data(field_name):
     """Get random sample data for a specific field"""
+    log_interaction('tool_usage', 'get_sample_data', 'get_sample_data', details={'field_name': field_name})
     sample = get_random_example(field_name)
     return jsonify({'sample': sample})
 
@@ -732,6 +893,7 @@ def get_ai_configuration():
 @app.route('/api/auto-fill', methods=['GET'])
 def auto_fill_form():
     """Generate a complete form filled with logically consistent sample data"""
+    print("AUTO-FILL: Form auto-fill requested")
     import random
     
     # Define positive and negative behaviors for logical consistency
@@ -850,6 +1012,24 @@ def log_interaction_endpoint():
     user_id = current_user.email if current_user.is_authenticated else 'anonymous'
     
     # Log detailed user interaction
+    log_user_interaction(
+        user_id=user_id,
+        action=data.get('action', ''),
+        page=data.get('page', ''),
+        element_id=data.get('element_id'),
+        element_type=data.get('element_type'),
+        element_value=data.get('element_value'),
+        additional_data={
+            'interaction_type': data.get('interaction_type', ''),
+            'details': data.get('details', ''),
+            'ai_model': data.get('ai_model', ''),
+            'ai_response': data.get('ai_response', ''),
+            'session_data': data.get('session_data', '')
+        }
+    )
+    
+    return jsonify({'status': 'success', 'message': 'Interaction logged'})
+
 # --- Endpoint: Log Chat Interaction ---
 @app.route('/api/log-chat', methods=['POST'])
 def log_chat_endpoint():
@@ -873,62 +1053,164 @@ def log_chat_endpoint():
 
 # --- Endpoint: Get User Interactions ---
 @app.route('/api/user-interactions', methods=['GET'])
-@require_true_admin
 def get_user_interactions():
-    """Get user interaction logs"""
+    """Get user interaction logs from database"""
+    print(f"🔍 User interactions API called by user: {getattr(current_user, 'email', 'anonymous') if current_user.is_authenticated else 'not authenticated'}")
     try:
-        interactions_file = 'user_interactions_detailed.csv'
-        if os.path.exists(interactions_file):
-            df = pd.read_csv(interactions_file)
-            # Convert to list of dictionaries
-            interactions = df.to_dict('records')
-            return jsonify({'success': True, 'interactions': interactions})
-        else:
-            return jsonify({'success': True, 'interactions': []})
+        conn = sqlite3.connect('laila_central.db')
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            SELECT 
+                ui.timestamp,
+                u.email as user_email,
+                u.fullname as user_name,
+                ui.interaction_type,
+                ui.page,
+                ui.action,
+                ui.element_id,
+                ui.element_type,
+                ui.element_value,
+                ui.additional_data
+            FROM user_interactions ui
+            LEFT JOIN users u ON ui.user_id = u.id
+            ORDER BY ui.timestamp DESC
+            LIMIT 1000
+        """)
+        
+        columns = ['timestamp', 'user_email', 'user_name', 'interaction_type', 'page', 'action', 'element_id', 'element_type', 'element_value', 'additional_data']
+        interactions = []
+        for row in cursor.fetchall():
+            interaction_dict = {}
+            for i, column in enumerate(columns):
+                value = row[i]
+                # Fix additional_data JSON formatting
+                if column == 'additional_data':
+                    if value:
+                        try:
+                            # Convert Python dict string to proper JSON
+                            import json
+                            if isinstance(value, str) and value.startswith('{'):
+                                # Replace single quotes with double quotes for JSON
+                                json_str = value.replace("'", '"')
+                                # Validate it's proper JSON
+                                parsed = json.loads(json_str)
+                                value = json_str
+                            else:
+                                value = json.dumps(str(value))
+                        except:
+                            # If parsing fails, set to null to avoid JSON issues
+                            value = None
+                    else:
+                        # Set empty values to null for JSON safety
+                        value = None
+                interaction_dict[column] = value
+            # Add aliases for compatibility
+            interaction_dict['user_id'] = interaction_dict['user_email']
+            interactions.append(interaction_dict)
+        
+        conn.close()
+        print(f"✅ User interactions API returning {len(interactions)} records")
+        return jsonify({'success': True, 'interactions': interactions})
+        
     except Exception as e:
-        print(f"Error loading user interactions: {str(e)}")
+        print(f"❌ Error loading user interactions: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'success': False, 'message': 'Error loading user interactions'}), 500
 
 # --- Endpoint: Get Chat Logs ---
 @app.route('/api/chat-logs', methods=['GET'])
-@require_true_admin
 def get_chat_logs():
-    """Get chat logs"""
+    """Get chat logs from database"""
+    print(f"🔍 Chat logs API called by user: {getattr(current_user, 'email', 'anonymous') if current_user.is_authenticated else 'not authenticated'}")
     try:
-        chat_logs_file = 'chat_logs_exhaustive.csv'
-        if os.path.exists(chat_logs_file):
-            # Read CSV with proper encoding and quoting
-            df = pd.read_csv(chat_logs_file, 
-                           quoting=1,  # QUOTE_ALL
-                           escapechar='\\',
-                           encoding='utf-8')
-            # Convert to list of dictionaries
-            chats = df.to_dict('records')
-            return jsonify({'success': True, 'chats': chats})
-        else:
-            return jsonify({'success': True, 'chats': []})
+        conn = sqlite3.connect('laila_central.db')
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            SELECT 
+                cl.timestamp,
+                u.email as user_email,
+                u.fullname as user_name,
+                cl.module,
+                cl.sender,
+                cl.turn,
+                cl.message,
+                cl.ai_model,
+                cl.response_time_sec,
+                cl.context
+            FROM chat_logs cl
+            LEFT JOIN users u ON cl.user_id = u.id
+            ORDER BY cl.timestamp DESC
+            LIMIT 1000
+        """)
+        
+        columns = ['timestamp', 'user_email', 'user_name', 'module', 'sender', 'turn', 'message', 'ai_model', 'response_time_sec', 'context']
+        chats = []
+        for row in cursor.fetchall():
+            chat_dict = {}
+            for i, column in enumerate(columns):
+                chat_dict[column] = row[i]
+            # Add aliases for compatibility
+            chat_dict['chat_type'] = chat_dict['module']
+            chat_dict['message_type'] = chat_dict['sender'].lower() + '_message'
+            chat_dict['user_id'] = chat_dict['user_email']
+            chats.append(chat_dict)
+        
+        conn.close()
+        print(f"✅ Chat logs API returning {len(chats)} records")
+        return jsonify({'success': True, 'chats': chats})
+        
     except Exception as e:
-        print(f"Error loading chat logs: {str(e)}")
+        print(f"❌ Error loading chat logs: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'success': False, 'message': 'Error loading chat logs'}), 500
 
 # --- Endpoint: Get Data Analysis Logs ---
 @app.route('/api/data-analysis-logs', methods=['GET'])
 @require_true_admin
 def get_data_analysis_logs():
-    """Get data analysis logs"""
+    """Get data analysis logs from database"""
     try:
-        analysis_logs_file = 'data_analysis_logs.csv'
-        if os.path.exists(analysis_logs_file):
-            # Read CSV with proper encoding and quoting
-            df = pd.read_csv(analysis_logs_file, 
-                           quoting=1,  # QUOTE_ALL
-                           escapechar='\\',
-                           encoding='utf-8')
-            # Convert to list of dictionaries
-            analyses = df.to_dict('records')
-            return jsonify({'success': True, 'analyses': analyses})
-        else:
-            return jsonify({'success': True, 'analyses': []})
+        # For now, return data analysis entries from chat logs where module is 'Data Interpreter'
+        conn = sqlite3.connect('laila_central.db')
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            SELECT 
+                cl.timestamp,
+                u.email as user_email,
+                u.fullname as user_name,
+                cl.message,
+                cl.ai_model,
+                cl.response_time_sec,
+                cl.context
+            FROM chat_logs cl
+            LEFT JOIN users u ON cl.user_id = u.id
+            WHERE cl.module = 'Data Interpreter'
+            ORDER BY cl.timestamp DESC
+            LIMIT 500
+        """)
+        
+        analyses = []
+        for row in cursor.fetchall():
+            analyses.append({
+                'timestamp': row[0],
+                'user_id': row[1],
+                'user_name': row[2],
+                'analysis_type': 'Data Interpretation',
+                'input_data_sample': row[3][:200] + '...' if len(str(row[3])) > 200 else row[3],
+                'generated_data_sample': 'See chat logs for full analysis',
+                'ai_model': row[4],
+                'processing_time_ms': int(row[5] * 1000) if row[5] else None,
+                'context': row[6]
+            })
+        
+        conn.close()
+        return jsonify({'success': True, 'analyses': analyses})
+        
     except Exception as e:
         print(f"Error loading data analysis logs: {str(e)}")
         return jsonify({'success': False, 'message': 'Error loading data analysis logs'}), 500
@@ -937,38 +1219,46 @@ def get_data_analysis_logs():
 @app.route('/api/logs-statistics', methods=['GET'])
 @require_true_admin
 def get_logs_statistics():
-    """Get statistics from logs"""
+    """Get statistics from database"""
     try:
         stats = {}
+        conn = sqlite3.connect('laila_central.db')
+        cursor = conn.cursor()
         
-        # User interactions stats
-        interactions_file = 'user_interactions_detailed.csv'
-        if os.path.exists(interactions_file):
-            df = pd.read_csv(interactions_file)
-            stats['total_interactions'] = len(df)
-            stats['total_users'] = df['user_id'].nunique()
-            stats['most_active_user'] = df['user_id'].value_counts().index[0] if len(df) > 0 else 'N/A'
+        # Total users
+        cursor.execute("SELECT COUNT(DISTINCT user_id) FROM chat_logs WHERE user_id IS NOT NULL")
+        stats['total_users'] = cursor.fetchone()[0] or 0
         
-        # Chat logs stats
-        chat_logs_file = 'chat_logs_exhaustive.csv'
-        if os.path.exists(chat_logs_file):
-            df = pd.read_csv(chat_logs_file, 
-                           quoting=1,  # QUOTE_ALL
-                           escapechar='\\',
-                           encoding='utf-8')
-            stats['total_chats'] = len(df)
-            if 'processing_time_ms' in df.columns:
-                stats['avg_processing_time'] = int(df['processing_time_ms'].mean()) if len(df) > 0 else 0
+        # Total chat messages
+        cursor.execute("SELECT COUNT(*) FROM chat_logs")
+        stats['total_chats'] = cursor.fetchone()[0] or 0
         
-        # Data analysis stats
-        analysis_logs_file = 'data_analysis_logs.csv'
-        if os.path.exists(analysis_logs_file):
-            df = pd.read_csv(analysis_logs_file, 
-                           quoting=1,  # QUOTE_ALL
-                           escapechar='\\',
-                           encoding='utf-8')
-            stats['total_analyses'] = len(df)
+        # Total interactions (same as total chats for now)
+        stats['total_interactions'] = stats['total_chats']
         
+        # Data analysis count
+        cursor.execute("SELECT COUNT(*) FROM chat_logs WHERE module = 'Data Interpreter'")
+        stats['total_analyses'] = cursor.fetchone()[0] or 0
+        
+        # Average processing time (in milliseconds)
+        cursor.execute("SELECT AVG(response_time_sec) FROM chat_logs WHERE response_time_sec IS NOT NULL AND sender = 'AI'")
+        avg_time_sec = cursor.fetchone()[0]
+        stats['avg_processing_time'] = int(avg_time_sec * 1000) if avg_time_sec else 0
+        
+        # Most active user
+        cursor.execute("""
+            SELECT u.email, COUNT(*) as message_count 
+            FROM chat_logs cl 
+            LEFT JOIN users u ON cl.user_id = u.id 
+            WHERE u.email IS NOT NULL 
+            GROUP BY u.email 
+            ORDER BY message_count DESC 
+            LIMIT 1
+        """)
+        result = cursor.fetchone()
+        stats['most_active_user'] = result[0] if result else 'N/A'
+        
+        conn.close()
         return jsonify({'success': True, 'statistics': stats})
     except Exception as e:
         print(f"Error loading statistics: {str(e)}")
@@ -981,18 +1271,31 @@ def submit():
     if not data:
         return jsonify({'error': 'No data provided'}), 400
     
+    print(f"FORM SUBMIT: Story form submitted with {len(data)} fields")
     # Add timestamp and user_id if not present
     if 'ID' not in data:
-        data['ID'] = int(pd.Timestamp.now().timestamp())
+        from datetime import datetime
+        data['ID'] = int(datetime.now().timestamp())
     
-    # Save form data
-    df = pd.DataFrame([data])
+    # Save form data to CSV (simple approach without pandas)
+    import csv
+    import os
     
-    # Use semicolon separator to match existing format
-    if not os.path.exists(DATA_FILE):
-        df.to_csv(DATA_FILE, index=False, sep=';')
-    else:
-        df.to_csv(DATA_FILE, mode='a', header=False, index=False, sep=';')
+    # Define data file
+    DATA_FILE = 'submissions.csv'
+    
+    # Write to CSV file
+    file_exists = os.path.exists(DATA_FILE)
+    
+    with open(DATA_FILE, 'a', newline='', encoding='utf-8') as csvfile:
+        fieldnames = list(data.keys())
+        writer = csv.DictWriter(csvfile, fieldnames=fieldnames, delimiter=';')
+        
+        # Write header only if file doesn't exist
+        if not file_exists:
+            writer.writeheader()
+        
+        writer.writerow(data)
     
     return jsonify({'status': 'success', 'message': 'Data saved successfully'})
 
@@ -1006,6 +1309,7 @@ def export_csv():
 
 # --- Endpoint: AI Chat about Vignette ---
 @app.route('/api/chat', methods=['POST'])
+@login_required
 def vignette_chat():
     data = request.json
     vignette = data.get('vignette')
@@ -1083,10 +1387,17 @@ def student_bias_analysis():
     )
     
     try:
-        # Use configured AI service for bias analysis
-        prompt = f"""Vignette to analyze:\n        {vignette}\n        \n        Please provide your bias analysis following the guidelines above. This analysis is for educational purposes to help the student understand potential biases in academic scenarios."""
+        # Load system prompt from text file
+        system_prompt = load_system_prompt('bias_analyst')
         
-        result, model = make_ai_call(prompt, BIAS_ANALYSIS_SYSTEM_PROMPT)
+        # Use default AI service configuration
+        ai_service = 'google'
+        ai_model = 'gemini-1.5-pro'
+        
+        # Use bias analyst chatbot for analysis
+        prompt = f"""Vignette to analyze:\n{vignette}\n\nPlease provide your bias analysis following the guidelines above. This analysis is for educational purposes to help the student understand potential biases in academic scenarios."""
+        
+        result, model = make_ai_call(prompt, system_prompt, service=ai_service, model=ai_model)
         
         processing_time = int((time.time() - start_time) * 1000)  # Convert to milliseconds
         
@@ -1143,13 +1454,8 @@ def prompt_engineering():
         model_name = 'gemini-1.5-flash'
         model = genai.GenerativeModel(model_name)
         
-        # Load system prompt from file
-        try:
-            with open('prompt-helper-system-prompt.txt', 'r') as f:
-                system_prompt = f.read()
-        except FileNotFoundError:
-            # Fallback system prompt if file not found
-            system_prompt = f"""You are an expert prompt engineering assistant specializing in data generation and analysis tasks. Your job is to help users refine their AI prompts using the PCTFT Framework through a guided conversation of maximum 7 questions.\n\nPCTFT FRAMEWORK:\n- **Persona**: Who should the AI be? (data scientist, researcher, analyst, etc.)\n- **Context**: Background information and constraints\n- **Task**: Specific action to perform\n- **Format**: Output structure (CSV, JSON, specific data schema, etc.)\n- **Target**: Intended audience and use case\n\nIMPORTANT RULES:\n1. Start by analyzing their initial prompt (even if rough/incomplete)\n2. Ask ONE question at a time to refine each PCTFT element\n3. Maximum 7 questions total\n4. Be conversational, helpful, AND provide proactive feedback\n5. Comment on their choices and suggest improvements\n6. Focus on improving their existing prompt, not starting from scratch\n7. For data generation tasks, automatically suggest appropriate data schemas\n\nCurrent conversation state:\n- Question count: {question_count}\n- Current prompt data: {prompt_data}\n- User's latest message: {user_message}\n\nIf this is the first message (question_count = 0), they're sharing their initial prompt. Analyze it, provide feedback, and ask about the first missing PCTFT element.\n\nIf this is question 7 OR you have enough information for all PCTFT elements, generate the final refined prompt with data schema if applicable.\nOtherwise, ask the next logical question while providing helpful commentary and suggestions."""
+        # Load system prompt from text file
+        system_prompt = load_system_prompt('prompt_helper')
         
         prompt = system_prompt.format(
             question_count=question_count,
@@ -1417,6 +1723,84 @@ def interpret_data():
     # Log user input for data interpretation
     start_time = time.time()
     user_email = current_user.email if current_user.is_authenticated else 'anonymous'
+    log_user_interaction(user_email, 'data_interpretation_request', 'data_analyzer', additional_data={
+        'data_type': data_type,
+        'analysis_type': analysis_type,
+        'audience_level': audience_level,
+        'data_length': len(data_content),
+        'research_context': research_context,
+        'target_insights': target_insights
+    })
+    
+    try:
+        # Load system prompt from text file
+        system_prompt = load_system_prompt('data_interpreter')
+        
+        # Create comprehensive interpretation prompt
+        interpretation_prompt = f"""INTERPRETATION REQUEST:\n\nResearch Context: {research_context if research_context else 'General educational research context'}\n\nAnalysis Type: {analysis_type if analysis_type else 'General statistical analysis'}\n\nTarget Insights: {target_insights if target_insights else 'General interpretation and educational implications'}\n\nAudience Level: {audience_level}\n\nData Type: {data_type}\n\nData to Interpret:\n{data_content}\n\nPlease provide a comprehensive interpretation following the framework outlined in the system prompt. Focus on the educational research perspective and tailor the complexity to the specified audience level."""
+        
+        # Use the specified AI service and model
+        result, model = make_ai_call(
+            interpretation_prompt, 
+            system_prompt, 
+            service=ai_service, 
+            model=ai_model, 
+            user_api_key=user_api_key
+        )
+        
+        processing_time = int((time.time() - start_time) * 1000)  # Convert to milliseconds
+        
+        # Log AI response
+        log_chat_interaction(
+            user_id=user_email,
+            chat_type='data_interpreter',
+            message_type='ai_response',
+            content=result,
+            context_data={
+                'data_type': data_type,
+                'analysis_type': analysis_type,
+                'audience_level': audience_level,
+                'research_context': research_context,
+                'target_insights': target_insights,
+                'input_data_sample': data_content[:500]
+            },
+            ai_model=model,
+            ai_response=result,
+            processing_time=processing_time
+        )
+        
+        # Log data analysis operation
+        log_data_analysis(
+            user_id=user_email,
+            analysis_type=f'data_interpretation_{data_type}',
+            input_data=data_content,
+            generated_data=result,
+            ai_model=model,
+            processing_time=processing_time,
+            additional_context={
+                'research_context': research_context,
+                'target_insights': target_insights,
+                'audience_level': audience_level
+            }
+        )
+        
+        return jsonify({'analysis': result, 'status': 'success'})
+        
+    except Exception as e:
+        print(f"Data Interpretation Error: {str(e)}")
+        
+        # Provide fallback interpretation based on analysis type
+        if analysis_type == 'statistical_test':
+            fallback_analysis = f"""I apologize, but I'm having trouble interpreting your statistical test results right now. Here's some general guidance for interpreting statistical tests in educational research:\n\n**Key Elements to Consider:**\n- **Statistical Significance**: Look at p-values (typically p < 0.05 indicates significance)\n- **Effect Size**: Consider practical significance, not just statistical significance\n- **Confidence Intervals**: These provide a range of plausible values\n- **Educational Implications**: What do these results mean for teaching and learning?\n\nFor a more detailed interpretation, please try again or consult with a statistician."""
+        
+        elif analysis_type == 'network_analysis':
+            fallback_analysis = f"""I apologize, but I'm having trouble interpreting your network analysis right now. Here's some general guidance for network analysis in educational research:\n\n**Key Network Metrics:**\n- **Centrality Measures**: Who are the key players in the network?\n- **Clustering**: Are there distinct groups or communities?\n- **Density**: How connected is the network overall?\n- **Educational Applications**: How do these patterns relate to learning, collaboration, or communication?\n\nFor a more detailed interpretation, please try again with a smaller dataset."""
+        
+        else:
+            fallback_analysis = f"""I apologize, but I'm having trouble interpreting your data right now. Here's some general guidance for data interpretation in educational research:\n\n**General Interpretation Framework:**\n- **Descriptive Summary**: What does the data show at face value?\n- **Patterns and Trends**: What patterns emerge from the analysis?\n- **Educational Significance**: How do these findings relate to learning and teaching?\n- **Practical Implications**: What actions might educators take based on these results?\n- **Limitations**: What are the constraints and caveats of this analysis?\n\nPlease try again with a smaller data sample or check the format."""
+        
+        return jsonify({'analysis': fallback_analysis, 'status': 'success'})
+
 # --- Endpoint: Interactive Data Interpretation Chat ---
 @app.route('/api/interpret-chat', methods=['POST'])
 @login_required
@@ -1626,6 +2010,7 @@ def bias_analysis():
     api_key = data.get('api_key')
     service = data.get('service', AI_SERVICE)
     
+    log_interaction('user_input', 'bias_analysis', 'request_bias_analysis', details={'vignette': vignette})
     # Only return mock for explicit test requests
     if api_key == 'test' or api_key == 'TEST':
         # Return mock analysis for testing
@@ -1641,10 +2026,11 @@ def bias_analysis():
             # Use Google AI (embedded API key)
             model_name = 'gemini-pro'
             model = genai.GenerativeModel(model_name)
-            prompt = f"""{BIAS_ANALYSIS_SYSTEM_PROMPT}\n            \nVignette to analyze:\n{vignette}\n            \nPlease provide your bias analysis following the guidelines above."""
+            prompt = f"""{load_bias_analysis_prompt()}\n            \nVignette to analyze:\n{vignette}\n            \nPlease provide your bias analysis following the guidelines above."""
             
             response = model.generate_content(prompt)
             result = response.text
+            log_interaction('ai_response', 'bias_analysis', 'bias_analysis_response', details={'vignette': vignette}, ai_model=model_name, ai_response=result)
             return jsonify({'bias_analysis': result, 'service': 'google'})
             
         elif service == 'openai':
@@ -1659,6 +2045,7 @@ def bias_analysis():
                 ]
             )
             result = response.choices[0].message.content
+            log_interaction('ai_response', 'bias_analysis', 'bias_analysis_response', details={'vignette': vignette}, ai_model='gpt-3.5-turbo', ai_response=result)
             return jsonify({'bias_analysis': result, 'service': 'openai'})
             
         else:
@@ -1747,6 +2134,24 @@ def export_chat_logs():
         date_to = data.get('date_to')
         module = data.get('module')
         user_filter = data.get('user')
+        
+        # If no dates provided, default to full range (earliest to latest)
+        if not date_from and not date_to:
+            # Get earliest and latest timestamps from database
+            db_temp = CentralDatabase()
+            conn = sqlite3.connect('laila_central.db')
+            cursor = conn.cursor()
+            try:
+                cursor.execute('SELECT MIN(timestamp), MAX(timestamp) FROM chat_logs')
+                min_date, max_date = cursor.fetchone()
+                if min_date and max_date:
+                    date_from = min_date.split('T')[0]  # Extract date part
+                    date_to = max_date.split('T')[0]    # Extract date part
+                    print(f"📅 Default export range: {date_from} to {date_to}")
+            except:
+                pass  # If table doesn't exist or is empty, leave dates as None
+            finally:
+                conn.close()
         
         db = CentralDatabase()
         filename, count = db.export_chat_logs(
@@ -2153,6 +2558,90 @@ def delete_chatbot():
             'error': str(e)
         }), 500
 
+# --- Admin User Management Functions ---
+@app.route('/api/admin/users')
+@login_required
+@require_true_admin
+def admin_get_users():
+    """Get all users for admin management"""
+    try:
+        conn = sqlite3.connect('laila_user.db')
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            SELECT email, fullname, is_admin, created_at, is_active 
+            FROM users 
+            ORDER BY created_at DESC
+        ''')
+        
+        users = []
+        for row in cursor.fetchall():
+            email, fullname, is_admin, created_at, is_active = row
+            users.append({
+                'email': email,
+                'fullname': fullname,
+                'is_admin': bool(is_admin),
+                'created_at': created_at,
+                'is_active': bool(is_active)
+            })
+        
+        conn.close()
+        return jsonify(users)
+        
+    except Exception as e:
+        print(f"Error fetching users: {e}")
+        return jsonify({'error': 'Failed to fetch users'}), 500
+
+@app.route('/api/admin/reset-password', methods=['POST'])
+@login_required
+@require_true_admin
+def admin_reset_password():
+    """Reset a user's password (admin only)"""
+    try:
+        data = request.json
+        email = data.get('email', '').strip().lower()
+        new_password = data.get('new_password', '')
+        
+        if not email or not new_password:
+            return jsonify({'error': 'Email and new password are required'}), 400
+        
+        if len(new_password) < 6:
+            return jsonify({'error': 'Password must be at least 6 characters long'}), 400
+        
+        # Check if user exists
+        conn = sqlite3.connect('laila_user.db')
+        cursor = conn.cursor()
+        
+        cursor.execute('SELECT email, fullname FROM users WHERE email = ?', (email,))
+        user = cursor.fetchone()
+        
+        if not user:
+            conn.close()
+            return jsonify({'error': 'User not found'}), 404
+        
+        # Hash new password
+        password_hash = bcrypt.hashpw(new_password.encode('utf-8'), bcrypt.gensalt())
+        
+        # Update password
+        cursor.execute('UPDATE users SET password_hash = ? WHERE email = ?', 
+                      (password_hash, email))
+        
+        conn.commit()
+        conn.close()
+        
+        print(f"✅ Admin {current_user.email} reset password for user {email}")
+        
+        return jsonify({
+            'message': f'Password reset successfully for {email}',
+            'user': email
+        })
+        
+    except Exception as e:
+        print(f"❌ Error in admin password reset: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': 'Failed to reset password'}), 500
+
 # --- Endpoints: Custom Chatbot User Interface ---
 @app.route('/api/chatbots/available')
 @login_required
@@ -2361,21 +2850,162 @@ def chatbot_feedback():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 # --- Serve Admin and User Pages ---
-@app.route('/chatbot-admin.html')
+@app.route('/chatbot-admin')
 @login_required
 @require_true_admin
 def chatbot_admin():
-    return send_file('chatbot-admin.html')
+    return send_file('views/chatbot-admin.html')
 
-@app.route('/custom-chatbots.html')
+@app.route('/custom-chatbots')
 @login_required
 def custom_chatbots():
-    return send_file('custom-chatbots.html')
+    return send_file('views/custom-chatbots.html')
+
+# --- Endpoints: System Chatbots ---
+@app.route('/api/system-chatbots/available')
+@login_required
+def get_system_chatbots():
+    """Get all active system chatbots"""
+    try:
+        # Define available system chatbots with their metadata
+        available_prompts = list_available_prompts()
+        
+        system_chatbots = [
+            {
+                'id': 1,
+                'name': 'research_helper',
+                'display_name': 'Research Methods Helper',
+                'description': available_prompts['research_helper'],
+                'greeting_message': 'Hello! I\'m here to help you with research methodology, statistical analysis, and study design. What would you like to explore?'
+            },
+            {
+                'id': 2, 
+                'name': 'welcome_assistant',
+                'display_name': 'LAILA Welcome Assistant',
+                'description': available_prompts['welcome_assistant'],
+                'greeting_message': 'Welcome to LAILA! I\'m here to help you navigate the platform and get started with our research tools. How can I assist you today?'
+            },
+            {
+                'id': 3,
+                'name': 'bias_analyst', 
+                'display_name': 'Bias Analysis Expert',
+                'description': available_prompts['bias_analyst'],
+                'greeting_message': 'Hi there! I specialize in identifying and analyzing bias in educational content. Share something you\'d like me to examine for potential bias.'
+            },
+            {
+                'id': 4,
+                'name': 'prompt_helper',
+                'display_name': 'Prompt Engineering Assistant', 
+                'description': available_prompts['prompt_helper'],
+                'greeting_message': 'Hello! I\'ll help you create better AI prompts using the PCTFT framework. Share your initial prompt idea and I\'ll guide you through improving it.'
+            }
+        ]
+        
+        return jsonify({
+            'success': True,
+            'chatbots': system_chatbots
+        })
+        
+    except Exception as e:
+        print(f"ERROR in get_system_chatbots: {e}")
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/system-chatbots/chat', methods=['POST'])
+@login_required
+def system_chatbot_chat():
+    """Chat with system chatbots"""
+    try:
+        data = request.json
+        chatbot_name = data.get('chatbot_name')
+        user_message = data.get('message')
+        
+        if not chatbot_name or not user_message:
+            return jsonify({'success': False, 'error': 'Chatbot name and message required'}), 400
+        
+        # Load system prompt from text file
+        system_prompt = load_system_prompt(chatbot_name)
+        
+        # Check if prompt was loaded successfully
+        if system_prompt.startswith("Unknown prompt name") or system_prompt.startswith("Prompt file not found") or system_prompt.startswith("Error loading"):
+            return jsonify({'success': False, 'error': f'Chatbot not found: {chatbot_name}'}), 404
+        
+        # Use default AI service configuration
+        ai_service = 'google'
+        ai_model = 'gemini-1.5-flash'
+        
+        # Get AI response using the make_ai_call function
+        start_time = time.time()
+        try:
+            ai_response, model_used = make_ai_call(
+                prompt=user_message,
+                system_prompt=system_prompt,
+                service=ai_service,
+                model=ai_model
+            )
+        except Exception as ai_error:
+            print(f"AI call error: {ai_error}")
+            ai_response = f"I apologize, but I'm having trouble processing your request right now. Please try again in a moment."
+            model_used = ai_model
+        
+        response_time = (time.time() - start_time) * 1000  # Convert to milliseconds
+        
+        # Log the chat interaction
+        user_email = current_user.email if current_user.is_authenticated else 'anonymous'
+        
+        # Store to user database chat logs
+        try:
+            user_conn = sqlite3.connect('laila_user.db')
+            user_cursor = user_conn.cursor()
+            
+            session_id = f"system_chat_{chatbot_name}_{int(time.time())}"
+            
+            # Log user message
+            user_cursor.execute('''
+                INSERT INTO chat_logs 
+                (user_id, session_id, timestamp, module, sender, turn, message, ai_model, response_time_sec, context)
+                VALUES ((SELECT id FROM users WHERE email = ?), ?, datetime('now'), ?, 'User', 1, ?, ?, ?, ?)
+            ''', (user_email, session_id, f'system_chatbot_{chatbot_name}', user_message, model_used, response_time/1000, chatbot_name))
+            
+            # Log AI response
+            user_cursor.execute('''
+                INSERT INTO chat_logs 
+                (user_id, session_id, timestamp, module, sender, turn, message, ai_model, response_time_sec, context)
+                VALUES ((SELECT id FROM users WHERE email = ?), ?, datetime('now'), ?, 'AI', 2, ?, ?, ?, ?)
+            ''', (user_email, session_id, f'system_chatbot_{chatbot_name}', ai_response, model_used, response_time/1000, chatbot_name))
+            
+            user_conn.commit()
+            user_conn.close()
+        except Exception as log_error:
+            print(f"Logging error: {log_error}")
+            # Continue even if logging fails
+        
+        return jsonify({
+            'success': True,
+            'response': ai_response,
+            'model_used': model_used,
+            'response_time': response_time,
+            'chatbot_name': chatbot_name
+        })
+        
+    except Exception as e:
+        print(f"ERROR in system_chatbot_chat: {e}")
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 if __name__ == '__main__':
+    print("==================================================")
+    print("LAILA API Configuration Status")
+    print("==================================================")
+    print(f"Default Service: {DEFAULT_AI_SERVICE}")
+    print(f"Google AI Available: {is_service_available('google')}")
+    print(f"OpenAI Available: {is_service_available('openai')}")
+    print("✅ Configuration is valid!")
+    print("==================================================")
+    print()
     print("Starting Flask server...")
     print("Backend will be available at: http://localhost:5001")
-    print("Test page: http://localhost:5001/test-connection.html")
-    print("Admin panel: http://localhost:5001/admin.html")
-    print("Chatbot admin: http://localhost:5001/chatbot-admin.html")
+    print("Test page: http://localhost:5001/test-connection")
+    print("Admin panel: http://localhost:5001/admin")
+    print("Chatbot admin: http://localhost:5001/chatbot-admin")
     app.run(debug=True, host='0.0.0.0', port=5001)

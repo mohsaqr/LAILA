@@ -38,7 +38,7 @@ LOGIN_TEMPLATE = """
         }
         
         .container {
-            max-width: 400px;
+            max-width: 450px;
             width: 100%;
             padding: 20px;
         }
@@ -113,6 +113,8 @@ LOGIN_TEMPLATE = """
             background: #6c757d;
         }
         
+
+        
         .error-message {
             background: #f8d7da;
             color: #721c24;
@@ -120,12 +122,34 @@ LOGIN_TEMPLATE = """
             border-radius: 8px;
             margin-bottom: 20px;
             border: 1px solid #f5c6cb;
+            text-align: left;
+        }
+        
+        .success-message {
+            background: #d4edda;
+            color: #155724;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border: 1px solid #c3e6cb;
+            text-align: left;
+        }
+        
+        .info-message {
+            background: #cce7ff;
+            color: #004085;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border: 1px solid #99d3ff;
+            text-align: left;
         }
         
         .toggle-form {
             color: #667eea;
             text-decoration: none;
             font-weight: bold;
+            cursor: pointer;
         }
         
         .toggle-form:hover {
@@ -145,28 +169,47 @@ LOGIN_TEMPLATE = """
             
             {% if error %}
             <div class="error-message">
-                {{ error }}
+                <strong>Error:</strong> {{ error }}
+            </div>
+            {% endif %}
+            
+            {% if success %}
+            <div class="success-message">
+                <strong>Success:</strong> {{ success }}
+            </div>
+            {% endif %}
+            
+            {% if info %}
+            <div class="info-message">
+                <strong>Info:</strong> {{ info }}
             </div>
             {% endif %}
             
             <div class="login-form" id="loginForm">
-                <form action="/login" method="post">
+                <form action="/" method="post">
                     <div class="form-group">
                         <label for="email">Email</label>
-                        <input type="email" id="email" name="email" required>
+                        <input type="email" id="email" name="email" required value="{{ email or '' }}">
                     </div>
                     <div class="form-group">
                         <label for="password">Password</label>
                         <input type="password" id="password" name="password" required>
                     </div>
+                    <div class="form-group" style="display: flex; align-items: center; text-align: left;">
+                        <input type="checkbox" id="remember_me" name="remember_me" checked style="margin-right: 8px; width: auto;">
+                        <label for="remember_me" style="margin-bottom: 0; font-weight: normal; color: #666;">Keep me logged in for 30 days</label>
+                    </div>
                     <input type="hidden" name="action" value="login">
                     <button type="submit" class="button">Login</button>
                 </form>
-                <p>Don't have an account? <a href="#" class="toggle-form" onclick="toggleForm()">Register here</a></p>
+                <p>
+                    Don't have an account? <a href="#" class="toggle-form" onclick="toggleForm()">Register here</a><br>
+                    <small style="color: #666;">Need password reset? Contact an administrator.</small>
+                </p>
             </div>
             
-            <div class="register-form hidden" id="registerForm">
-                <form action="/login" method="post">
+            <div class="register-form hidden" id="registerForm" {% if show_register %}style="display: block;"{% endif %}>
+                <form action="/" method="post">
                     <div class="form-group">
                         <label for="reg-fullname">Full Name</label>
                         <input type="text" id="reg-fullname" name="fullname" required>
@@ -177,13 +220,16 @@ LOGIN_TEMPLATE = """
                     </div>
                     <div class="form-group">
                         <label for="reg-password">Password</label>
-                        <input type="password" id="reg-password" name="password" required>
+                        <input type="password" id="reg-password" name="password" required minlength="6">
+                        <small style="color: #666;">Password must be at least 6 characters long</small>
                     </div>
                     <input type="hidden" name="action" value="register">
                     <button type="submit" class="button">Register</button>
                 </form>
                 <p>Already have an account? <a href="#" class="toggle-form" onclick="toggleForm()">Login here</a></p>
             </div>
+            
+
         </div>
     </div>
     
@@ -201,13 +247,147 @@ LOGIN_TEMPLATE = """
             }
         }
         
-        {% if show_register %}
-        // Show register form by default if show_register is True
         document.addEventListener('DOMContentLoaded', function() {
+            {% if show_register %}
             toggleForm();
+            {% endif %}
         });
-        {% endif %}
     </script>
+</body>
+</html>
+"""
+
+# Admin Access Denied Template
+ADMIN_ACCESS_DENIED_TEMPLATE = """
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Access Required - LAILA</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            font-family: 'Arial', sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .container {
+            max-width: 500px;
+            width: 100%;
+            padding: 20px;
+        }
+        
+        .main-content {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            text-align: center;
+        }
+        
+        .crown-icon {
+            font-size: 4em;
+            color: #e74c3c;
+            margin-bottom: 20px;
+        }
+        
+        .main-title {
+            color: #2c3e50;
+            font-size: 2.2em;
+            margin-bottom: 15px;
+            font-weight: bold;
+        }
+        
+        .subtitle {
+            color: #666;
+            font-size: 1.1em;
+            margin-bottom: 25px;
+            line-height: 1.5;
+        }
+        
+        .user-info {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px 0;
+            border-left: 4px solid #3498db;
+        }
+        
+        .button {
+            display: inline-block;
+            padding: 15px 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            transition: transform 0.2s ease;
+            margin: 10px;
+        }
+        
+        .button:hover {
+            transform: translateY(-2px);
+        }
+        
+        .contact-info {
+            margin-top: 30px;
+            padding: 20px;
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 10px;
+            color: #856404;
+        }
+        
+        .contact-info h4 {
+            margin-top: 0;
+            color: #856404;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="main-content">
+            <div class="crown-icon">
+                <i class="fas fa-crown"></i>
+            </div>
+            
+            <h1 class="main-title">Admin Access Required</h1>
+            
+            <p class="subtitle">
+                Sorry {{ user_name }}, you need administrator privileges to access the admin panel.
+            </p>
+            
+            <div class="user-info">
+                <strong>Your Account:</strong> {{ user_name }}<br>
+                <strong>Account Type:</strong> Standard User
+            </div>
+            
+            <div class="contact-info">
+                <h4><i class="fas fa-info-circle"></i> Need Admin Access?</h4>
+                <p>If you believe you should have administrator access, please contact the system administrator to have your account upgraded.</p>
+            </div>
+            
+            <div style="margin-top: 30px;">
+                <a href="/main-menu" class="button">
+                    <i class="fas fa-home"></i> Return to Main Menu
+                </a>
+                
+                <a href="/logout" class="button" style="background: #6c757d;">
+                    <i class="fas fa-sign-out-alt"></i> Logout
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/js/all.min.js"></script>
 </body>
 </html>
 """
@@ -246,6 +426,49 @@ def load_bias_analysis_prompt():
         return "Bias analysis prompt file not found. Please ensure 'bias-analysis-system-prompt.txt' exists."
     except Exception as e:
         return f"Error loading bias analysis prompt: {str(e)}"
+
+def load_system_prompt(prompt_name):
+    """Load any system prompt from text files
+    
+    Args:
+        prompt_name: Name of the prompt (e.g., 'bias_analyst', 'prompt_helper', etc.)
+    
+    Returns:
+        str: The prompt content, or error message if not found
+    """
+    # Map prompt names to file names
+    prompt_files = {
+        'bias_analyst': 'bias-analysis-system-prompt.txt',
+        'bias_analysis': 'bias-analysis-system-prompt.txt',
+        'prompt_helper': 'prompt-helper-system-prompt.txt',
+        'data_interpreter': 'interpret-data-system-prompt.txt',
+        'research_helper': 'research-helper-system-prompt.txt',
+        'welcome_assistant': 'welcome-assistant-system-prompt.txt'
+    }
+    
+    filename = prompt_files.get(prompt_name)
+    if not filename:
+        return f"Unknown prompt name: {prompt_name}. Available prompts: {list(prompt_files.keys())}"
+    
+    try:
+        with open(filename, 'r', encoding='utf-8') as f:
+            content = f.read().strip()
+            print(f"✅ Loaded prompt '{prompt_name}' from {filename} ({len(content)} chars)")
+            return content
+    except FileNotFoundError:
+        return f"Prompt file not found: {filename}. Please ensure the file exists."
+    except Exception as e:
+        return f"Error loading prompt from {filename}: {str(e)}"
+
+def list_available_prompts():
+    """List all available system prompts"""
+    return {
+        'bias_analyst': 'Bias analysis expert for educational content',
+        'prompt_helper': 'Prompt engineering assistant using PCTFT framework',  
+        'data_interpreter': 'Data analysis and interpretation expert',
+        'research_helper': 'Educational research methods assistant',
+        'welcome_assistant': 'Platform welcome and navigation helper'
+    }
 
 # =============================================================================
 # APPLICATION SETTINGS

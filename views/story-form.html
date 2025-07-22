@@ -619,14 +619,17 @@
                         interaction_type: 'story_submission',
                         page: 'story_form',
                         action: 'story_submitted_and_redirected',
-                        details: 'Story submitted successfully, redirecting to chat',
+                        details: 'Story submitted successfully, redirecting to bias chat',
                         session_data: JSON.stringify({ vignette_length: data.Complete_Vignette?.length || 0 })
                     })
                 }).catch(console.error);
                 
-                // Redirect back to main menu after story submission
-                alert('Story submitted successfully! Returning to main menu.');
-                window.location.href = '/main-menu.html';
+                // Store the submitted vignette for bias analysis and redirect to bias research platform
+                sessionStorage.setItem('submittedVignette', data.Complete_Vignette || '');
+                sessionStorage.setItem('fromStoryForm', 'true');
+                
+                alert('Story submitted successfully! Now let\'s discuss potential bias in your story.');
+                window.location.href = '/bias-research-platform';
 
             } catch (err) {
                 console.error('Submission error:', err);

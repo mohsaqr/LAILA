@@ -37,7 +37,9 @@ class CentralDatabase:
         query = """
             SELECT 
                 cl.timestamp,
-                u.email as user,
+                u.email as user_email,
+                u.fullname as user_name,
+                cl.user_id,
                 cl.module,
                 cl.sender,
                 cl.turn,

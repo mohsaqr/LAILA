@@ -1,0 +1,52 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Data files
+*.csv
+*.db
+*.sqlite
+*.log
+*.json
+
+# Development files
+*Summary.md
+*_test.py
+test_*.py
+checkthese.txt
+manual_*.py
+
+# System files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*.db
+*.csv
+
+# Backup files
+*.bak
+*.backup
+*~
+
+# API Keys (extra protection)
+*api_key*
+*secret*
+.env 
