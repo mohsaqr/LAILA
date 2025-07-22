@@ -339,6 +339,7 @@ def logout():
 # --- Missing Logging Functions ---
 def log_user_interaction(user_id, interaction_type=None, page=None, action=None, element_id=None, element_type=None, element_value=None, additional_data=None):
     """Log user interactions to database"""
+
     try:
         timestamp = datetime.now().isoformat()
         

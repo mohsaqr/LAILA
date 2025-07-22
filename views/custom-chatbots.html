@@ -6,6 +6,7 @@
     <title>Custom Chatbots - LAILA</title>
     <link rel="stylesheet" href="static/css/unified-styles.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <script src="https://unpkg.com/showdown/dist/showdown.min.js"></script>
     <script src="static/js/navigation.js"></script>
     <style>
         /* Chatbot Selection Grid */
@@ -156,6 +157,13 @@
             gap: 20px;
             background: var(--bg-light);
         }
+
+        .chat-messages ul {
+            padding-left: 20px;
+        }
+        .chat-messages p {
+            margin-bottom: 10px;
+        }
         
         .message {
             max-width: 75%;
@@ -173,7 +181,7 @@
             border-bottom-right-radius: 8px;
         }
         
-        .message.chatbot {
+        .message.chatbot, .message.system {
             align-self: flex-start;
             background: white;
             color: var(--text-dark);
@@ -181,7 +189,7 @@
             border-bottom-left-radius: 8px;
         }
         
-        .message.system {
+        .message.system-old {
             align-self: center;
             background: var(--warning-light);
             color: var(--warning-dark);
@@ -223,6 +231,7 @@
             height: 8px;
             width: 8px;
             background: var(--text-muted);
+            background-color:  var(--primary-color);
             border-radius: 50%;
             animation: typing 1.4s infinite ease-in-out;
         }
@@ -243,7 +252,6 @@
             background: white;
             display: flex;
             gap: 15px;
-            align-items: flex-end;
         }
         
         .input-group {
@@ -286,7 +294,7 @@
         }
         
         .send-btn:hover:not(:disabled) {
-            background: var(--primary-dark);
+            background: var(--accent-color);
             transform: scale(1.05);
             box-shadow: var(--shadow-md);
         }
@@ -341,7 +349,22 @@
             transform: translateY(-2px);
             box-shadow: var(--shadow-sm);
         }
-        
+
+        .btn-copy {
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            position: absolute;
+            top: 0px;
+            right: 0px;
+            color:  var(--primary-color);
+            transition: color 0.3s ease;
+        }
+        .btn-copy:hover, .btn-copy:focus {
+            color: var(--accent-color);
+            transform: scale(1.1);
+            transition: color 0.3s ease, transform 0.3s ease;
+        }
         /* Responsive Design */
         @media (max-width: 768px) {
             .chatbot-selector {
@@ -472,7 +495,7 @@
         let selectedChatbot = null;
         let conversationId = null;
         let currentUserId = null;
-
+        var converter = null;
         // Load chatbots and user info on page load
         document.addEventListener('DOMContentLoaded', function() {
             loadAvailableChatbots();
@@ -483,6 +506,7 @@
                 this.style.height = 'auto';
                 this.style.height = Math.min(this.scrollHeight, 120) + 'px';
             });
+            converter = new showdown.Converter()
         });
  
 
@@ -636,14 +660,30 @@
             messageDiv.className = `message ${sender}`;
             
             const messageText = document.createElement('div');
-            messageText.textContent = text;
+            const htmlText = converter.makeHtml(text);
+            messageText.innerHTML = htmlText;
             messageDiv.appendChild(messageText);
             
             const timeDiv = document.createElement('div');
             timeDiv.className = 'message-time';
             timeDiv.textContent = new Date().toLocaleTimeString();
             messageDiv.appendChild(timeDiv);
-            
+            if (sender == "chatbot")  {
+                const copyButton = document.createElement('button');
+                copyButton.className = 'btn btn-copy';
+                copyButton.title = 'Copy';
+                copyButton.innerHTML = "<span class='fas fa-copy'></span>";
+                messageDiv.appendChild(copyButton);
+                copyButton.addEventListener('click', function() {
+                    navigator.clipboard.writeText(htmlText).then(() => {
+                        console.log('Text copied to clipboard');
+                        
+                    }).catch(err => {
+                        console.error('Failed to copy text:', err);
+
+                    });
+                });
+            }
             messagesContainer.appendChild(messageDiv);
             messagesContainer.scrollTop = messagesContainer.scrollHeight;
         }
@@ -723,6 +763,7 @@
                 errorDiv.remove();
             }, 5000);
         }
+        
     </script>
 </body>
 </html> 

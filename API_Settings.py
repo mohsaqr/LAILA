@@ -90,7 +90,6 @@ def get_api_key(service, user_key=None):
     # Check environment variables
     if service == 'google':
         env_key = os.getenv('GOOGLE_API_KEY')
-        print(env_key)
         if env_key:
             return env_key
         return GOOGLE_API_KEY if GOOGLE_API_KEY.strip() else None

@@ -98,12 +98,14 @@
             gap: 15px;
             margin-bottom: 20px;
             flex-wrap: wrap;
+            align-items: end;
         }
         
         .control-group {
             display: flex;
             flex-direction: column;
             gap: 5px;
+            
         }
         
         .control-group label {
@@ -136,6 +138,9 @@
             cursor: pointer;
             font-weight: bold;
             transition: all 0.3s ease;
+            height: 42px;
+            vertical-align: bottom;
+            border: 2px solid var(--primary-color);
         }
         
         .refresh-button:hover {
@@ -233,7 +238,7 @@
         
         .stats-section {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
             gap: 20px;
             margin-bottom: 30px;
         }
@@ -546,7 +551,7 @@
             data.forEach(interaction => {
                 const timestamp = new Date(interaction.timestamp).toLocaleString();
                 const details = interaction.additional_data ? JSON.parse(interaction.additional_data) : {};
-                
+                console.log(interaction)
                 html += `
                     <tr>
                         <td class="timestamp">${timestamp}</td>
