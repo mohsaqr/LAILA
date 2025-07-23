@@ -71,13 +71,17 @@ LAILA (Learn AI and LA) is a comprehensive web application designed for academic
    ```bash
    cp example.env .env
    ```
-   and fill in with your API Keys
-6. **Run the application**:
+6. **Set up the database**  
+    ```bash
+   python model/central_database_setup.py
+   python/custom_chatbot_setup.py
+   ```
+7. **Run the application** (this is the only command that you will have to run every time)
    ```bash
    python app.py
    ```
 
-7. **Access the platform**:
+8. **Access the platform**:
    - Open your browser and go to: `http://localhost:5001`
    - The bias research platform will be available immediately
 
