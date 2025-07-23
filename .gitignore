@@ -51,3 +51,7 @@ Thumbs.db
 *secret*
 .env 
 trash/*
+dist/*
+build/*
+*.egg-info
+local_deployment.sh

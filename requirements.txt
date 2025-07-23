@@ -6,3 +6,4 @@ pandas
 bcrypt
 Flask-Login
 dotenv
+build

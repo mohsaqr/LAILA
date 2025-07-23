@@ -903,7 +903,6 @@ def log_interaction_endpoint():
 # --- Endpoint: Log Chat Interaction ---
 @app.route('/api/log-chat', methods=['POST'])
 @login_required
-@require_true_admin
 def log_chat_endpoint():
     """Log chat interactions to CSV"""
     data = request.json
@@ -1144,6 +1143,7 @@ def get_logs_statistics():
 
 # --- Endpoint: Submit Form Data ---
 @app.route('/api/submit', methods=['POST'])
+@login_required
 def submit():
     data = request.json
     if not data:
