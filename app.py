@@ -7,7 +7,7 @@ import os
 import sqlite3
 import openai
 import google.generativeai as genai
-from config import get_ai_configuration, LOGIN_TEMPLATE, ADMIN_ACCESS_DENIED_TEMPLATE, CHAT_SYSTEM_PROMPT, load_bias_analysis_prompt, load_system_prompt, list_available_prompts
+from config import get_ai_config, LOGIN_TEMPLATE, ADMIN_ACCESS_DENIED_TEMPLATE, CHAT_SYSTEM_PROMPT, load_bias_analysis_prompt, load_system_prompt, list_available_prompts
 from API_Settings import  DEFAULT_AI_SERVICE, DEFAULT_GOOGLE_MODEL, DEFAULT_OPENAI_MODEL, is_service_available, get_api_key
 import bcrypt
 import uuid
@@ -111,6 +111,8 @@ def initialize_session():
         session['session_id'] = str(uuid.uuid4())
     if 'chat_id' not in session:
         session['chat_id'] = str(uuid.uuid4())
+
+
 
 app = Flask(__name__, static_folder='.', static_url_path='')
 app.secret_key =  os.getenv('SECRET_KEY') or os.urandom(24)
@@ -854,6 +856,7 @@ def auto_fill_form():
     # Generate consistent form data
     form_data = {
         'Nationality': random.choice(['German', 'American', 'Chinese', 'Indian', 'British', 'Canadian', 'Australian', 'French', 'Spanish', 'Brazilian']),
+        # 'Country': random.choice(['Germany', 'United States', 'Canada', 'India', 'United Kingdom', 'Canada', 'Australia', 'France', 'Spain', 'Brazil']),
         'Pronoun': random.choice(['his', 'her', 'their']),
         'Student_State_Trait_Behaviour': behavior,
         'Degree_Level': random.choice(['K12 School', 'Bachelor\'s Degree', 'Master\'s Degree', 'Doctoral Degree']),
@@ -1699,7 +1702,7 @@ def interpret_chat():
     
     # Log user chat message
     start_time = time.time()
-    user_email = current_user.id if current_user.is_authenticated else 'anonymous'
+    user_id = current_user.id if current_user.is_authenticated else 'anonymous'
     log_chat_interaction(
         user_id=user_id,
         chat_type='data_interpreter_chat',
@@ -1724,7 +1727,7 @@ def interpret_chat():
         
         # Log AI chat response
         log_chat_interaction(
-            user_id=user_email,
+            user_id=user_id,
             chat_type='data_interpreter_chat',
             message_type='ai_response',
             content=result,

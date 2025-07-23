@@ -263,13 +263,13 @@
                         The Student's Background
                     </div>
                     <div class="story-text">
-                        Once upon a time, there was a student from 
+                        Once upon a time, there was a student with a 
                         <span class="story-input">
                             <select name="Nationality" required>
-                                <option value="">choose country</option>
+                                <option value="">choose nationality</option>
                             </select>
                         </span>
-                        who identified with pronouns:
+                        nationality, who identified with pronouns:
                         <span class="story-input">
                             <select name="Pronoun" required>
                                 <option value="">pronoun</option>
@@ -452,13 +452,18 @@
         }).catch(console.error);
 
         // Populate dropdowns
-        const nationalities = {
+        const countries = {
             "North America": ["United States", "Canada", "Mexico"],
             "Europe": ["Germany", "United Kingdom", "France", "Italy", "Spain", "Netherlands", "Belgium", "Sweden", "Norway", "Denmark", "Finland", "Poland", "Switzerland", "Austria", "Portugal", "Greece", "Ireland"],
             "Asia": ["China", "India", "Japan", "South Korea", "Turkey"],
             "Latin America & Caribbean": ["Brazil", "Argentina", "Colombia", "Chile", "Peru"]
         };
-        
+        const nationalities = {
+            "North America": ["American", "Canadian", "Mexican"],
+            "Europe": ["German", "British", "French", "Italian", "Spanish", "Dutch", "Belgian", "Swedish", "Norwegian", "Danish", "Finnish", "Polish", "Swiss", "Austrian", "Portuguese", "Greek", "Irish"],
+            "Asia": ["Chinese", "Indian", "Japanese", "South Korean", "Turkish"],
+            "Latin America & Caribbean": ["Brazilian", "Argentinian", "Colombian", "Chilean", "Peruvian"]
+        };
         const degreeLevels = ["K12 School", "Bachelor's Degree", "Master's Degree", "Doctoral Degree"];
         const fieldsOfStudy = ["Computer Science", "Psychology", "Mathematics", "Nursing", "Business Administration", "Engineering", "Chemistry", "Medicine", "Physics", "Sociology", "Literature", "Philosophy", "Environmental Science", "History", "Biology"];
         const supportHours = Array.from({ length: 8 }, (_, i) => i + 1);

@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="static/css/unified-styles.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <script src="static/js/navigation.js"></script>
+    <script src="static/js/showdown.min.js"></script>
     <style>
         .platform-container {
             max-width: 1200px;
@@ -584,6 +585,7 @@
     <script>
         // User session management
         let userId = localStorage.getItem('userId');
+        let converter = null;
         if (!userId) {
             userId = 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
             localStorage.setItem('userId', userId);
@@ -884,7 +886,7 @@
                     biasResult.className = 'message ai';
                     biasResult.innerHTML = `
                         <strong>🔍 Bias Analysis Results:</strong><br><br>
-                        ${data.bias_analysis.replace(/\n/g, '<br>')}
+                        ${converter.makeHtml(bias_analysis)}
                     `;
                     chatMessages.appendChild(biasResult);
                 } else {
@@ -990,7 +992,7 @@
             // Check if user came from story form submission
             const submittedVignette = sessionStorage.getItem('submittedVignette');
             const fromStoryForm = sessionStorage.getItem('fromStoryForm');
-            
+            converter = new showdown.Converter();
             if (submittedVignette && fromStoryForm === 'true') {
                 // Clear the session storage flags
                 sessionStorage.removeItem('submittedVignette');

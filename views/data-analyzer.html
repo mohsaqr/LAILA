@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="static/css/unified-styles.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <script src="static/js/navigation.js"></script>
+    <script src="static/js/showdown.min.js"></script>
     <style>
         .page-subtitle {
             margin-bottom: 40px;
@@ -247,6 +248,12 @@
             max-width: 85%;
             animation: fadeIn 0.3s ease-in;
         }
+        .chat-messages ul {
+            padding-left: 40px;
+        }
+        .chat-messages p {
+            margin-bottom: 10px;
+        }
         
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(10px); }
@@ -301,6 +308,7 @@
             font-size: 16px;
             transition: all 0.3s ease;
             min-width: 100px;
+            align-self: flex-start;
         }
         
         .chat-send-button:hover {
@@ -637,6 +645,7 @@ Examples:
         let availableModels = {};
         let currentAnalysis = '';
         let chatHistory = [];
+        let converter = null;
         
         // Enhanced logging function
         function logUserInteraction(action, elementId = null, elementType = null, elementValue = null, additionalData = {}) {
@@ -689,6 +698,7 @@ Examples:
 
         // Initialize the page
         document.addEventListener('DOMContentLoaded', function() {
+            converter = new showdown.Converter();
             loadUserSettings();
             loadAIConfiguration();
             setupEventListeners();
@@ -1183,7 +1193,8 @@ RESEARCH CONTEXT: Online learning platform analysis for predictive modeling of s
                 
                 if (result.status === 'success') {
                     currentAnalysis = result.analysis;
-                    document.getElementById('analysis-content').innerHTML = result.analysis.replace(/\n/g, '<br>');
+                    const htmlText = converter.makeHtml(currentAnalysis);
+                    document.getElementById('analysis-content').innerHTML =htmlText
                     document.getElementById('analysis-result').style.display = 'block';
                     document.getElementById('chat-section').style.display = 'block';
                     
@@ -1216,6 +1227,7 @@ RESEARCH CONTEXT: Online learning platform analysis for predictive modeling of s
                     What would you like to discuss about your analysis?
                 </div>
             `;
+            document.getElementById('chat-messages').scrollIntoView();
         }
 
         // Send chat message
@@ -1328,7 +1340,7 @@ RESEARCH CONTEXT: Online learning platform analysis for predictive modeling of s
             if (type === 'user') {
                 messageDiv.innerHTML = `<strong>You:</strong> ${content}`;
             } else {
-                messageDiv.innerHTML = `<strong>AI Interpreter:</strong> ${content}`;
+                messageDiv.innerHTML = `<strong>AI Interpreter:</strong> ${converter.makeHtml(content)}`;
             }
             
             chatMessages.appendChild(messageDiv);
@@ -1363,6 +1375,7 @@ DATA TO ANALYZE:
             
             document.getElementById('professional-prompt').value = prompt;
             document.getElementById('prompt-result').style.display = 'block';
+            document.getElementById('prompt-result').scrollIntoView();
         }
 
         // Copy prompt to clipboard
