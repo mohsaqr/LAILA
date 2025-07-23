@@ -877,7 +877,6 @@ def auto_fill_form():
 # --- Endpoint: Log User Interaction ---
 @app.route('/api/log-interaction', methods=['POST'])
 @login_required
-@require_true_admin
 def log_interaction_endpoint():
     """Log user interactions to CSV"""
     data = request.json

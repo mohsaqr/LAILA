@@ -7,6 +7,8 @@
     <link rel="stylesheet" href="static/css/unified-styles.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <script src="static/js/navigation.js"></script>
+    <script src="static/js/showdown.min.js"></script>
+
 </head>
 <body>
     <div class="page-container">
@@ -132,7 +134,12 @@
             currentPrompt: '',
             finalPrompt: null
         };
-
+        let converter = null;
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize the chat interface
+            converter = new showdown.Converter();
+            
+        });
         async function startPromptEngineering() {
             const initialPrompt = document.getElementById('initialPrompt').value.trim();
             if (!initialPrompt) {
@@ -165,7 +172,7 @@
 
         async function sendPromptEngineeringRequest(message) {
             try {
-                const loadingDiv = addMessageToChat('ai', '<i class="fas fa-spinner spinner"></i> Thinking...', 'conversationHistory');
+                const loadingDiv = addMessageToChat('ai', '<i class="fas spinner"></i> Thinking...', 'conversationHistory');
 
                 const response = await fetch('/api/prompt-engineering', {
                     method: 'POST',
@@ -183,7 +190,7 @@
                 loadingDiv.remove();
 
                 if (data.status === 'success') {
-                    addMessageToChat('ai', data.response, 'conversationHistory');
+                    addMessageToChat('ai', converter.makeHtml(data.response), 'conversationHistory');
                     
                     // Update state
                     conversationState.questionCount = data.question_count || conversationState.questionCount + 1;
@@ -280,7 +287,7 @@
             document.getElementById('discussionMessage').value = '';
 
             try {
-                const loadingDiv = addMessageToChat('ai', '<i class="fas fa-spinner spinner"></i> Analyzing...', 'discussionHistory');
+                const loadingDiv = addMessageToChat('ai', '<i class="fas spinner"></i> Analyzing...', 'discussionHistory');
 
                 const response = await fetch('/api/prompt-discussion', {
                     method: 'POST',
