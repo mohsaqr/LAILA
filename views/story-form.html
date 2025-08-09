@@ -273,9 +273,9 @@
                         <span class="story-input">
                             <select name="Pronoun" required>
                                 <option value="">pronoun</option>
-                                <option value="his">his</option>
-                                <option value="her">her</option>
-                                <option value="their">their</option>
+                                <option value="his">he/him</option>
+                                <option value="her">she/her</option>
+                                <option value="their">they/them</option>
                             </select>
                         </span>
                         This student had a unique personality and learning style - 
@@ -355,9 +355,9 @@
                         <span class="story-input">
                             <select name="Support_Delivery_Method" required>
                                 <option value="">how?</option>
-                                <option value="By the teacher">by the teacher</option>
-                                <option value="At home (self-directed)">at home (self-directed)</option>
-                                <option value="By a senior peer">by a senior peer</option>
+                                <option value="by the teacher">by the teacher</option>
+                                <option value="at home (self-directed)">at home (self-directed)</option>
+                                <option value="by a senior peer">by a senior peer</option>
                             </select>
                         </span>
                         . The specific intervention chosen was 
@@ -561,7 +561,7 @@
             const supportPeriod = (data.Support_Period || '').replace('Per ', '').toLowerCase();
             
             // Generate the complete story
-            const story = `This ${data.Nationality} student ${data.Student_State_Trait_Behaviour} is studying ${data.Degree_Level} in ${data.Field_of_Study} and is pursuing ${data.Pronoun} goals and progressing very ${data.Progress_Descriptor}. We know this based on ${data.Learning_Analytics}. For that the mentor advised ${data.Support_Hours} hours of support every ${supportPeriod}. The support is conducted by ${data.Support_Delivery_Method}. After the support the student scored ${data.Support_Result} out of 100 and ${data.Completion_Status} the program.`;
+            const story = `This ${data.Nationality} student ${data.Student_State_Trait_Behaviour} is studying ${data.Degree_Level} in ${data.Field_of_Study} and is pursuing ${data.Pronoun} goals and progressing very ${data.Progress_Descriptor}. We know this based on ${data.Learning_Analytics}. For that the mentor advised ${data.Support_Hours} hours of support every ${supportPeriod}. The support is conducted ${data.Support_Delivery_Method}. After the support the student scored ${data.Support_Result} out of 100 and ${data.Completion_Status} the program.`;
             
             // Display the story
             document.getElementById('story-content').textContent = story;

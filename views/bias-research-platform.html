@@ -366,7 +366,13 @@
             text-align: center;
             outline: none;
         }
-        
+
+        #chat-messages ul {
+            padding-left: 40px; 
+        }
+         #chat-messages ol {
+            padding-left: 30px; 
+        }       
         @media (max-width: 768px) {
             .story-container {
                 grid-template-columns: 1fr;
@@ -417,9 +423,9 @@
                     <span class="story-input">
                         <select id="quick-pronoun">
                             <option value="">pronoun</option>
-                            <option value="his">his</option>
-                            <option value="her">her</option>
-                            <option value="their">their</option>
+                            <option value="him">he/him</option>
+                            <option value="her">she/her</option>
+                            <option value="them">they/them</option>
                         </select>
                     </span>
                     pronouns is studying 
@@ -632,7 +638,7 @@
                 return;
             }
 
-            const story = `This ${nationality} student is studying ${field} and is progressing ${progress} in ${pronoun} academic goals. The student demonstrates consistent engagement with coursework and actively participates in class discussions. Based on learning analytics data, the student shows regular login patterns and completes assignments on time. The mentor recommended 3 hours of support per week delivered by the teacher. After receiving support, the student scored 85 out of 100 and completed the program successfully.`;
+            const story = `This student from ${nationality} is studying ${field} and is progressing ${progress} in ${pronoun} academic goals. The student demonstrates consistent engagement with coursework and actively participates in class discussions. Based on learning analytics data, the student shows regular login patterns and completes assignments on time. The mentor recommended 3 hours of support per week delivered by the teacher. After receiving support, the student scored 85 out of 100 and completed the program successfully.`;
 
             document.getElementById('quick-story-text').textContent = story;
             document.getElementById('quick-story-result').style.display = 'block';
@@ -877,6 +883,7 @@
                 
                 const data = await response.json();
                 
+
                 // Hide typing indicator
                 typingIndicator.style.display = 'none';
                 
@@ -886,7 +893,7 @@
                     biasResult.className = 'message ai';
                     biasResult.innerHTML = `
                         <strong>🔍 Bias Analysis Results:</strong><br><br>
-                        ${converter.makeHtml(bias_analysis)}
+                        ${converter.makeHtml(data.bias_analysis)}
                     `;
                     chatMessages.appendChild(biasResult);
                 } else {
@@ -902,7 +909,7 @@
             } catch (error) {
                 // Hide typing indicator
                 typingIndicator.style.display = 'none';
-                
+                console.error('Bias analysis error:', error);
                 const errorResult = document.createElement('div');
                 errorResult.className = 'message ai';
                 errorResult.innerHTML = `
@@ -952,7 +959,6 @@
                 
                 // Hide typing indicator
                 typingIndicator.style.display = 'none';
-                
                 if (data.response) {
                     // Add AI response to chat
                     const aiMessage = document.createElement('div');

@@ -2,6 +2,7 @@
 import os
 import random
 import csv
+import sqlite3
 
 # =============================================================================
 # IMPORT UNIFIED API SETTINGS
@@ -416,17 +417,6 @@ Guidelines:
 
 Remember: You're facilitating learning and critical thinking, not providing definitive answers."""
 
-# Bias analysis prompt is now loaded from external file
-def load_bias_analysis_prompt():
-    """Load bias analysis prompt from external file"""
-    try:
-        with open('prompts/bias-analysis-system-prompt.txt', 'r', encoding='utf-8') as f:
-            return f.read().strip()
-    except FileNotFoundError:
-        return "Bias analysis prompt file not found. Please ensure 'bias-analysis-system-prompt.txt' exists in the 'prompts' folder."
-    except Exception as e:
-        return f"Error loading bias analysis prompt: {str(e)}"
-
 def load_system_prompt(prompt_name):
     """Load any system prompt from text files
     
@@ -436,29 +426,39 @@ def load_system_prompt(prompt_name):
     Returns:
         str: The prompt content, or error message if not found
     """
-    # Map prompt names to file names
-    prompt_files = {
-        'bias_analyst': 'bias-analysis-system-prompt.txt',
-        'bias_analysis': 'bias-analysis-system-prompt.txt',
-        'prompt_helper': 'prompt-helper-system-prompt.txt',
-        'data_interpreter': 'interpret-data-system-prompt.txt',
-        'research_helper': 'research-helper-system-prompt.txt',
-        'welcome_assistant': 'welcome-assistant-system-prompt.txt'
-    }
-    
-    filename = prompt_files.get("prompts/" + prompt_name)
-    if not filename:
-        return f"Unknown prompt name: {prompt_name}. Available prompts: {list(prompt_files.keys())}"
-    
+   
     try:
-        with open(filename, 'r', encoding='utf-8') as f:
-            content = f.read().strip()
-            print(f"✅ Loaded prompt '{prompt_name}' from {filename} ({len(content)} chars)")
-            return content
-    except FileNotFoundError:
-        return f"Prompt file not found: {filename}. Please ensure the file exists."
+        conn = sqlite3.connect('db/laila_central.db')
+        cursor = conn.cursor()
+        print(f"Loading prompt: {prompt_name}")
+        # Total users
+        cursor.execute("SELECT prompt FROM system_prompts WHERE name = ?", (prompt_name,))
+        content = cursor.fetchone()[0] or 0
+        conn.close()
+        return content
     except Exception as e:
-        return f"Error loading prompt from {filename}: {str(e)}"
+        print(f"Error loading prompt from {prompt_name}: {str(e)}")
+        return f"Error loading prompt from {prompt_name}: {str(e)}"
+    
+def save_system_prompt(prompt_name, content):
+    """Save a system prompt to the database
+    
+    Args:
+        prompt_name: Name of the prompt (e.g., 'bias_analyst', 'prompt_helper', etc.)
+        content: The prompt content to save
+    """
+    try:
+        conn = sqlite3.connect('db/laila_central.db')
+        cursor = conn.cursor()
+        cursor.execute('''
+            INSERT OR REPLACE INTO system_prompts (name, prompt)
+            VALUES (?, ?)
+        ''', (prompt_name, content))
+        conn.commit()
+        conn.close()
+        print(f"✅ Prompt '{prompt_name}' saved successfully.")
+    except Exception as e:
+        print(f"Error saving prompt '{prompt_name}': {str(e)}")
 
 def list_available_prompts():
     """List all available system prompts"""
@@ -506,7 +506,7 @@ def get_ai_configuration():
         'system_google_key_available': config['google']['available'],
         'system_openai_key_available': config['openai']['available'],
         'chat_prompt': CHAT_SYSTEM_PROMPT,
-        'bias_prompt': load_bias_analysis_prompt()
+        'bias_prompt': load_system_prompt("bias_analyst")
     }
 
 # =============================================================================

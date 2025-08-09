@@ -7,7 +7,7 @@ import os
 import sqlite3
 import openai
 import google.generativeai as genai
-from config import get_ai_config, LOGIN_TEMPLATE, ADMIN_ACCESS_DENIED_TEMPLATE, CHAT_SYSTEM_PROMPT, load_bias_analysis_prompt, load_system_prompt, list_available_prompts
+from config import get_ai_config, LOGIN_TEMPLATE, ADMIN_ACCESS_DENIED_TEMPLATE, CHAT_SYSTEM_PROMPT, load_system_prompt, list_available_prompts, save_system_prompt
 from API_Settings import  DEFAULT_AI_SERVICE, DEFAULT_GOOGLE_MODEL, DEFAULT_OPENAI_MODEL, is_service_available, get_api_key
 import bcrypt
 import uuid
@@ -148,7 +148,6 @@ def load_user(id):
         cursor.execute('SELECT id, fullname, email, is_admin, is_confirmed FROM users WHERE id = ?', (id,))
         user_data = cursor.fetchone()
         conn.close()
-        print(user_data)
         if user_data:
             id, fullname, email, is_admin, is_confirmed = user_data
             return User(id, fullname, email, bool(is_admin), bool(is_confirmed))
@@ -221,10 +220,11 @@ def login():
                 
                 # Create new user
                 hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+                timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
                 cursor.execute('''
                     INSERT INTO users (fullname, email, password_hash, is_admin, created_at, is_confirmed, is_active)
-                    VALUES (?, ?, ?, ?, datetime('now'),?, ?)
-                ''', (fullname, email, hashed_password, False,  False, True))
+                    VALUES (?, ?, ?, ?, ? ,?, ?)
+                ''', (fullname, email, hashed_password, False, timestamp, False, True))
                 conn.commit()
                 conn.close()
                 return render_template_string(LOGIN_TEMPLATE, 
@@ -261,13 +261,14 @@ def login():
                     hash_to_check = hashed_password.encode('utf-8')
                 else:
                     hash_to_check = hashed_password
-                
+                timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
                 if bcrypt.checkpw(password.encode('utf-8'), hash_to_check):
                     # Update last login timestamp
                     try:
                         cursor.execute('''
-                            UPDATE users SET last_login = datetime('now') WHERE email = ?
-                        ''', (email,))
+                            UPDATE users SET last_login = ? WHERE email = ?
+                        ''', (timestamp, email,))
                         conn.commit()
                     except sqlite3.OperationalError as e:
                         print(f"⚠️  Warning: Could not update last_login: {e}")
@@ -319,7 +320,7 @@ def log_user_interaction(user_id, interaction_type=None, page=None, action=None,
     """Log user interactions to database"""
 
     try:
-        timestamp = datetime.now().isoformat()
+        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S') # datetime.now().isoformat()
         
         # Use action as interaction_type if provided (for backwards compatibility)
         actual_interaction_type = action if action else interaction_type
@@ -351,7 +352,8 @@ def log_user_interaction(user_id, interaction_type=None, page=None, action=None,
 def log_data_analysis(user_id, analysis_type, input_data, generated_data, ai_model=None, processing_time=None, additional_context=None):
     """Log data analysis operations - simplified version"""
     try:
-        timestamp = datetime.now().isoformat()
+        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S') # datetime.now().isoformat()
+        timestamp
         print(f"DATA ANALYSIS: {timestamp} | {user_id} | {analysis_type} | Model: {ai_model} | Time: {processing_time}ms")
         print(f"  Input length: {len(input_data) if input_data else 0} chars")
         print(f"  Output length: {len(generated_data) if generated_data else 0} chars")
@@ -634,7 +636,7 @@ def save_user_settings():
         data = request.json
         if not data:
             return jsonify({'success': False, 'message': 'No data provided'}), 400
-        
+        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         # Prepare settings data
         settings_data = {
             'user_id': current_user.id,
@@ -647,7 +649,7 @@ def save_user_settings():
             'default_audience': data.get('default_audience', 'graduate'),
             'show_debug': data.get('show_debug', False),
             'auto_save': data.get('auto_save', True),
-            'last_updated': pd.Timestamp.now().isoformat()
+            'last_updated': timestamp
         }
         
         # Save to CSV
@@ -697,21 +699,21 @@ def session_status():
     
     session_expires = None
     remember_expires = None
-    
+    timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     if session.permanent:
-        session_expires = datetime.now() + timedelta(seconds=app.config['PERMANENT_SESSION_LIFETIME'])
+        session_expires = timestamp + timedelta(seconds=app.config['PERMANENT_SESSION_LIFETIME'])
     
     # Check if remember cookie exists
     remember_token = request.cookies.get('remember_token')
     if remember_token:
-        remember_expires = datetime.now() + timedelta(seconds=app.config['REMEMBER_COOKIE_DURATION'])
+        remember_expires = timestamp + timedelta(seconds=app.config['REMEMBER_COOKIE_DURATION'])
     
     return jsonify({
         'authenticated': True,
         'session_permanent': session.permanent,
         'session_expires': session_expires.isoformat() if session_expires else None,
         'remember_expires': remember_expires.isoformat() if remember_expires else None,
-        'current_time': datetime.now().isoformat(),
+        'current_time': timestamp,
         'session_lifetime_days': app.config['PERMANENT_SESSION_LIFETIME'] / 86400,
         'remember_lifetime_days': app.config['REMEMBER_COOKIE_DURATION'] / 86400
     })
@@ -855,7 +857,7 @@ def auto_fill_form():
     
     # Generate consistent form data
     form_data = {
-        'Nationality': random.choice(['German', 'American', 'Chinese', 'Indian', 'British', 'Canadian', 'Australian', 'French', 'Spanish', 'Brazilian']),
+        'Nationality': random.choice(['German', 'American', 'Chinese', 'Indian', 'British', 'Canadian', 'French', 'Spanish', 'Brazilian']),
         # 'Country': random.choice(['Germany', 'United States', 'Canada', 'India', 'United Kingdom', 'Canada', 'Australia', 'France', 'Spain', 'Brazil']),
         'Pronoun': random.choice(['his', 'her', 'their']),
         'Student_State_Trait_Behaviour': behavior,
@@ -865,7 +867,7 @@ def auto_fill_form():
         'Learning_Analytics': analytics,
         'Support_Hours': support_hours,
         'Support_Period': random.choice(['Per Week', 'Per Month']),
-        'Support_Delivery_Method': random.choice(['By the teacher', 'At home (self-directed)', 'By a senior peer']),
+        'Support_Delivery_Method': random.choice(['by the teacher', 'at home (self-directed)', 'by a senior peer']),
         'Support_Decision': support_decision,
         'Support_Duration': random.choice(['One semester', 'Six weeks', 'Two months', 'One month', 'Other']),
         'Support_Result': support_result,
@@ -1333,7 +1335,7 @@ def prompt_engineering():
     try:
         # Use Google AI for prompt engineering assistance
         model_name = 'gemini-1.5-flash'
-        model = genai.GenerativeModel(model_name)
+        service = 'google'
         
         # Load system prompt from text file
         system_prompt = load_system_prompt('prompt_helper')
@@ -1344,11 +1346,15 @@ def prompt_engineering():
             user_message=user_message
         )
         
-        response = model.generate_content(prompt)
-        result = response.text
-        
+        result, model = make_ai_call(
+            prompt,
+            system_prompt,
+            service,
+            model= model_name 
+        )
+
         processing_time = int((time.time() - start_time) * 1000)  # Convert to milliseconds
-        
+
         # Log AI response
         log_chat_interaction(
             user_id=current_user.id,
@@ -1361,7 +1367,7 @@ def prompt_engineering():
                 'user_question': user_message,
                 'system_prompt_length': len(system_prompt)
             },
-            ai_model=model_name,
+            ai_model=model,
             ai_response=result,
             processing_time=processing_time
         )
@@ -1440,13 +1446,20 @@ def prompt_discussion():
     try:
         # Use Google AI for prompt discussion
         model_name = 'gemini-1.5-flash'
-        model = genai.GenerativeModel(model_name)
+        # model = genai.GenerativeModel(model_name)
         
         # Create system prompt for prompt discussion
         discussion_prompt = f"""You are an expert prompt engineering consultant. A user has created a prompt and wants to discuss it with you. Your job is to help them refine, understand, or modify their prompt based on their questions or requests.\n\nCURRENT PROMPT:\n{current_prompt}\n\nUSER'S MESSAGE/QUESTION:\n{user_message}\n\nINSTRUCTIONS:\n1. Analyze their question/request carefully\n2. Provide helpful, specific advice about their prompt\n3. If they ask for modifications, suggest specific changes\n4. If they want explanations, explain the reasoning behind prompt elements\n5. If they want alternatives, suggest different approaches\n6. Be conversational and educational\n7. If you suggest a modified prompt, provide the complete new version\n\nIMPORTANT: If you provide a modified/updated prompt, clearly indicate it as "UPDATED PROMPT:" followed by the complete new prompt text.\n\nRespond helpfully to their question about the prompt."""
         
-        response = model.generate_content(discussion_prompt)
-        result = response.text
+        result, model = make_ai_call(
+            prompt = current_prompt,
+            system_prompt = discussion_prompt,
+            service = "google",
+            model= model_name 
+        )
+        
+        # response = model.generate_content(discussion_prompt)
+        # result = response.text
         
         processing_time = int((time.time() - start_time) * 1000)  # Convert to milliseconds
         
@@ -1462,7 +1475,7 @@ def prompt_discussion():
                 'user_question': user_message,
                 'discussion_prompt_length': len(discussion_prompt)
             },
-            ai_model=model_name,
+            ai_model=model,
             ai_response=result,
             processing_time=processing_time
         )
@@ -1493,85 +1506,6 @@ def prompt_discussion():
         
         return jsonify({'response': fallback_response, 'status': 'success'})
 
-# --- Endpoint: Data Analysis ---
-@app.route('/api/analyze-data', methods=['POST'])
-@login_required
-def analyze_data():
-    data = request.json
-    data_content = data.get('data')
-    data_type = data.get('data_type', 'text')
-    
-    if not data_content:
-        return jsonify({'error': 'Data content required'}), 400
-    
-    # Log user input for data analysis
-    start_time = time.time()
-    log_chat_interaction(
-        user_id=current_user.id,
-        chat_type='data_analysis',
-        message_type='user_input',
-        content=data_content,
-        context_data={
-            'data_type': data_type,
-            'data_length': len(data_content)
-        }
-    )
-    
-    try:
-        # Use Google AI for data analysis
-        model_name = 'gemini-1.5-flash'
-        model = genai.GenerativeModel(model_name)
-        
-        # Create analysis prompt based on data type
-        if data_type == 'image':
-            analysis_prompt = f"""You are an educational researcher analyzing visual data. Please provide a focused, short analysis of this image from an educational research perspective.\n\nFocus on:\n- What the image shows (content description)\n- Educational relevance or implications\n- Key patterns or insights visible\n- Research applications or potential uses\n\nKeep your analysis concise (2-3 paragraphs maximum) and educational in nature.\n\nImage data: {data_content}"""
-        
-        elif data_type == 'csv':
-            analysis_prompt = f"""You are an educational researcher analyzing CSV data. Please provide a focused, short analysis of this dataset from an educational research perspective.\n\nFocus on:\n- Data structure and variables\n- Key patterns, trends, or outliers\n- Statistical insights (means, distributions, correlations)\n- Educational implications\n- Potential research questions this data could answer\n\nKeep your analysis concise (2-3 paragraphs maximum) and educational in nature.\n\nCSV Data:\n{data_content}"""
-        
-        elif data_type == 'json':
-            analysis_prompt = f"""You are an educational researcher analyzing JSON data. Please provide a focused, short analysis of this dataset from an educational research perspective.\n\nFocus on:\n- Data structure and key fields\n- Patterns in the data\n- Educational insights or implications\n- Potential research applications\n\nKeep your analysis concise (2-3 paragraphs maximum) and educational in nature.\n\nJSON Data:\n{data_content}"""
-        
-        else:  # text or other
-            analysis_prompt = f"""You are an educational researcher analyzing text data. Please provide a focused, short analysis of this content from an educational research perspective.\n\nFocus on:\n- Main themes or topics\n- Educational relevance\n- Key insights or patterns\n- Research implications\n- Potential applications in educational settings\n\nKeep your analysis concise (2-3 paragraphs maximum) and educational in nature.\n\nText Data:\n{data_content}"""
-        
-        response = model.generate_content(analysis_prompt)
-        result = response.text
-        
-        processing_time = int((time.time() - start_time) * 1000)  # Convert to milliseconds
-        
-        # Log AI response
-        log_chat_interaction(
-            user_id=current_user.id,
-            chat_type='data_analysis',
-            message_type='ai_response',
-            content=result,
-            context_data={
-                'data_type': data_type,
-                'input_data_sample': data_content[:500],
-                'analysis_prompt_length': len(analysis_prompt)
-            },
-            ai_model=model_name,
-            ai_response=result,
-            processing_time=processing_time
-        )
-        
-        return jsonify({'analysis': result, 'status': 'success'})
-        
-    except Exception as e:
-        print(f"Data Analysis Error: {str(e)}")
-        
-        # Provide fallback analysis based on data type
-        if data_type == 'csv':
-            fallback_analysis = f"""I apologize, but I'm having trouble analyzing your CSV data right now. Here's some general guidance for CSV data analysis:\n\n**Key Areas to Examine:**\n- **Data Quality**: Check for missing values, outliers, or inconsistencies\n- **Descriptive Statistics**: Calculate means, medians, standard deviations for numerical columns\n- **Patterns**: Look for trends, correlations between variables, or groupings\n- **Educational Insights**: Consider how this data relates to learning outcomes, student performance, or educational interventions\n\nFor a more detailed analysis, try uploading a smaller sample or checking the data format."""
-        
-        elif data_type == 'image':
-            fallback_analysis = f"""I apologize, but I'm having trouble analyzing your image right now. Here's some general guidance for image analysis in educational research:\n\n**Key Areas to Consider:**\n- **Content Analysis**: What educational materials, settings, or activities are shown?\n- **Visual Elements**: Charts, graphs, text, or educational tools visible\n- **Context**: Classroom environment, learning materials, or student work\n- **Research Applications**: How this visual data could support educational research\n\nPlease try uploading a smaller image file or a different format."""
-        
-        else:
-            fallback_analysis = f"""I apologize, but I'm having trouble analyzing your data right now. Here's some general guidance for data interpretation in educational research:\n\n**General Interpretation Framework:**\n- **Descriptive Summary**: What does the data show at face value?\n- **Patterns and Trends**: What patterns emerge from the analysis?\n- **Educational Significance**: How do these findings relate to learning and teaching?\n- **Practical Implications**: What actions might educators take based on these results?\n- **Limitations**: What are the constraints and caveats of this analysis?\n\nPlease try again with a smaller data sample or check the format."""
-        
-        return jsonify({'analysis': fallback_analysis, 'status': 'success'})
 
 # --- Endpoint: Data Interpretation ---
 @app.route('/api/interpret-data', methods=['POST'])
@@ -1585,20 +1519,20 @@ def interpret_data():
     target_insights = data.get('target_insights', '')
     audience_level = data.get('audience_level', 'undergraduate')
     
-    # Get AI settings from request
-    ai_service = data.get('ai_service')
-    ai_model = data.get('ai_model')
-    use_custom_keys = data.get('use_custom_keys', False)
-    user_openai_key = data.get('openai_key', '')
-    user_google_key = data.get('google_key', '')
+    # # Get AI settings from request
+    # ai_service = data.get('ai_service')
+    # ai_model = data.get('ai_model')
+    # use_custom_keys = data.get('use_custom_keys', False)
+    # user_openai_key = data.get('openai_key', '')
+    # user_google_key = data.get('google_key', '')
     
     # Determine which API key to use
-    user_api_key = None
-    if use_custom_keys:
-        if ai_service == 'openai' and user_openai_key:
-            user_api_key = user_openai_key
-        elif ai_service == 'google' and user_google_key:
-            user_api_key = user_google_key
+    # user_api_key = None
+    # if use_custom_keys:
+    #     if ai_service == 'openai' and user_openai_key:
+    #         user_api_key = user_openai_key
+    #     elif ai_service == 'google' and user_google_key:
+    #         user_api_key = user_google_key
     
     if not data_content:
         return jsonify({'error': 'Data content required'}), 400
@@ -1625,10 +1559,10 @@ def interpret_data():
         # Use the specified AI service and model
         result, model = make_ai_call(
             interpretation_prompt, 
-            system_prompt, 
-            service=ai_service, 
-            model=ai_model, 
-            user_api_key=user_api_key
+            system_prompt#, 
+            # service=ai_service, 
+            # model=ai_model, 
+            # user_api_key=user_api_key
         )
         
         processing_time = int((time.time() - start_time) * 1000)  # Convert to milliseconds
@@ -1909,7 +1843,7 @@ def bias_analysis():
             # Use Google AI (embedded API key)
             model_name = 'gemini-pro'
             model = genai.GenerativeModel(model_name)
-            prompt = f"""{load_bias_analysis_prompt()}\n            \nVignette to analyze:\n{vignette}\n            \nPlease provide your bias analysis following the guidelines above."""
+            prompt = f"""{load_system_prompt("bias_analysis")}\n            \nVignette to analyze:\n{vignette}\n            \nPlease provide your bias analysis following the guidelines above."""
             
             response = model.generate_content(prompt)
             result = response.text
@@ -2362,7 +2296,7 @@ def update_chatbot():
             data['display_name'], data.get('description', ''),
             data['greeting_message'], data['system_prompt'],
             data.get('ai_service', 'google'), data.get('ai_model', 'gemini-1.5-flash'),
-            data.get('is_active', True), datetime.now().isoformat(), chatbot_id
+            data.get('is_active', True),datetime.now().strftime('%Y-%m-%d %H:%M:%S'), chatbot_id
         ))
         
         conn.commit()
@@ -2393,9 +2327,10 @@ def toggle_chatbot():
         
         conn = sqlite3.connect('db/laila_central.db')
         cursor = conn.cursor()
-        
+        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
         cursor.execute('UPDATE custom_chatbots SET is_active = ?, updated_at = ? WHERE id = ?',
-                      (is_active, datetime.now().isoformat(), chatbot_id))
+                      (is_active, timestamp, chatbot_id))
         
         conn.commit()
         conn.close()
@@ -2630,7 +2565,8 @@ def start_chatbot_conversation():
         # Generate session ID
         import uuid
         session_id = str(uuid.uuid4())
-        
+        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
         # Create conversation record
         conn = sqlite3.connect('db/laila_central.db')
         cursor = conn.cursor()
@@ -2639,7 +2575,7 @@ def start_chatbot_conversation():
             INSERT INTO chatbot_conversations 
             (chatbot_id, user_id, session_id, started_at, last_activity)
             VALUES (?, ?, ?, ?, ?)
-        ''', (chatbot_id, user_id, session_id, datetime.now().isoformat(), datetime.now().isoformat()))
+        ''', (chatbot_id, user_id, session_id, timestamp, timestamp))
         
         conversation_id = cursor.lastrowid
         
@@ -2687,20 +2623,21 @@ def chatbot_chat():
             return jsonify({'success': False, 'error': 'Chatbot not found'}), 404
         
         system_prompt, ai_service, ai_model = chatbot_config
-        
+        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
         # Store user message
         cursor.execute('''
             INSERT INTO chatbot_messages 
             (conversation_id, chatbot_id, user_id, sender, message, timestamp)
             VALUES (?, ?, ?, 'user', ?, ?)
-        ''', (conversation_id, chatbot_id, user_id, user_message, datetime.now().isoformat()))
+        ''', (conversation_id, chatbot_id, user_id, user_message, timestamp))
         
         # Update conversation activity
         cursor.execute('''
             UPDATE chatbot_conversations 
             SET last_activity = ?, message_count = message_count + 1
             WHERE id = ?
-        ''', (datetime.now().isoformat(), conversation_id))
+        ''', (timestamp, conversation_id))
         
         conn.commit()
         conn.close()
@@ -2728,14 +2665,15 @@ def chatbot_chat():
             INSERT INTO chatbot_messages 
             (conversation_id, chatbot_id, user_id, sender, message, ai_model, response_time_sec, timestamp)
             VALUES (?, ?, ?, 'chatbot', ?, ?, ?, ?)
-        ''', (conversation_id, chatbot_id, user_id, ai_response, model_used, response_time, datetime.now().isoformat()))
+        ''', (conversation_id, chatbot_id, user_id, ai_response, model_used, response_time, datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+))
         
         # Update conversation activity
         cursor.execute('''
             UPDATE chatbot_conversations 
             SET last_activity = ?, message_count = message_count + 1
             WHERE id = ?
-        ''', (datetime.now().isoformat(), conversation_id))
+        ''', (datetime.now().strftime('%Y-%m-%d %H:%M:%S'), conversation_id))
         
         conn.commit()
         conn.close()
@@ -2792,7 +2730,7 @@ def chatbot_admin():
 
 @app.route('/custom-chatbots')
 @login_required
-@require_true_admin
+#@require_true_admin
 def custom_chatbots():
     return send_file('views/custom-chatbots.html')
 
@@ -2846,6 +2784,64 @@ def get_system_chatbots():
         traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)}), 500
 
+@app.route('/api/admin/system-prompt/<promptId>', methods=['GET'])
+@login_required
+@require_true_admin
+def get_system_prompt(promptId):
+    """Get system prompt by ID"""
+    print(f"Fetching system prompt for ID: {promptId}")
+
+    try:
+        prompt_id = promptId
+        if not prompt_id:
+            return jsonify({'success': False, 'error': 'Prompt ID is required'}), 400
+        
+        # Load system prompt from text file
+        system_prompt = load_system_prompt(prompt_id)
+        
+        # Check if prompt was loaded successfully
+        if system_prompt.startswith("Unknown prompt name") or system_prompt.startswith("Prompt file not found") or system_prompt.startswith("Error loading"):
+            return jsonify({'success': False, 'error': f'Chatbot not found: {prompt_id}'}), 404
+        
+        return jsonify({
+            'success': True,
+            'prompt': system_prompt
+        })
+        
+    except Exception as e:
+        print(f"ERROR in get_system_prompt: {e}")
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/admin/system-prompt/<promptId>', methods=['PUT'])
+@login_required
+@require_true_admin
+def update_system_prompt(promptId):
+    """Update system prompt by ID"""
+    try:
+        prompt_id = promptId
+        if not prompt_id:
+            return jsonify({'success': False, 'error': 'Prompt ID is required'}), 400
+        
+        data = request.json
+        new_prompt = data.get('prompt', '')
+        
+        if not new_prompt:
+            return jsonify({'success': False, 'error': 'New prompt content is required'}), 400
+        
+        # Save the updated prompt to the file
+        save_system_prompt(prompt_id, new_prompt)
+        
+        return jsonify({
+            'success': True,
+            'message': f'System prompt "{prompt_id}" updated successfully!'
+        })
+        
+    except Exception as e:
+        print(f"ERROR in update_system_prompt: {e}")
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 @app.route('/api/system-chatbots/chat', methods=['POST'])
 @login_required
 def system_chatbot_chat():
@@ -2860,7 +2856,7 @@ def system_chatbot_chat():
         
         # Load system prompt from text file
         system_prompt = load_system_prompt(chatbot_name)
-        
+
         # Check if prompt was loaded successfully
         if system_prompt.startswith("Unknown prompt name") or system_prompt.startswith("Prompt file not found") or system_prompt.startswith("Error loading"):
             return jsonify({'success': False, 'error': f'Chatbot not found: {chatbot_name}'}), 404
@@ -2878,6 +2874,7 @@ def system_chatbot_chat():
                 service=ai_service,
                 model=ai_model
             )
+            
         except Exception as ai_error:
             print(f"AI call error: {ai_error}")
             ai_response = f"I apologize, but I'm having trouble processing your request right now. Please try again in a moment."
@@ -2887,27 +2884,27 @@ def system_chatbot_chat():
         
         # Log the chat interaction
         user_id = current_user.id if current_user.is_authenticated else 'anonymous'
-        
         # Store to user database chat logs
         try:
             user_conn = sqlite3.connect('db/laila_central.db')
             user_cursor = user_conn.cursor()
             
             session_id = f"system_chat_{chatbot_name}_{int(time.time())}"
-            
+            timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
             # Log user message
             user_cursor.execute('''
                 INSERT INTO chat_logs 
                 (user_id, session_id, timestamp, module, sender, turn, message, ai_model, response_time_sec, context)
-                VALUES ((SELECT id FROM users WHERE email = ?), ?, datetime('now'), ?, 'User', 1, ?, ?, ?, ?)
-            ''', (user_id, session_id, f'system_chatbot_{chatbot_name}', user_message, model_used, response_time/1000, chatbot_name))
+                VALUES ((SELECT id FROM users WHERE id = ?), ?, ?, ?, 'User', 1, ?, ?, ?, ?)
+            ''', (user_id, session_id, timestamp, f'system_chatbot_{chatbot_name}', user_message, model_used, start_time/1000, chatbot_name))
             
             # Log AI response
             user_cursor.execute('''
                 INSERT INTO chat_logs 
                 (user_id, session_id, timestamp, module, sender, turn, message, ai_model, response_time_sec, context)
-                VALUES ((SELECT id FROM users WHERE email = ?), ?, datetime('now'), ?, 'AI', 2, ?, ?, ?, ?)
-            ''', (user_id, session_id, f'system_chatbot_{chatbot_name}', ai_response, model_used, response_time/1000, chatbot_name))
+                VALUES ((SELECT id FROM users WHERE id = ?), ?, ?, ?, 'AI', 2, ?, ?, ?, ?)
+            ''', (user_id, session_id, timestamp, f'system_chatbot_{chatbot_name}', ai_response, model_used, response_time/1000, chatbot_name))
             
             user_conn.commit()
             user_conn.close()

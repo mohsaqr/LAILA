@@ -343,7 +343,7 @@
                         </button>
                     </div>
                     
-                                    <div id="system-export-success" class="success-message"></div>
+                <div id="system-export-success" class="success-message"></div>
                 <div id="system-export-error" class="error-message"></div>
             </div>
             <!-- Bias Analysis Section -->
@@ -412,6 +412,27 @@
                     <a href="custom-chatbots" class="btn btn-info">
                         <i class="fas fa-comments"></i> Test Chatbots
                     </a>
+                </div>
+            </div>
+            <!-- System Logs Section -->
+            <div class="admin-section">
+                <h3><i class="fas fa-message"></i> System Prompts</h3>
+                <p>View and modify system prompts</p>
+                <div class="form-group">
+                    <select id="system-prompts" class="form-control" onchange="loadSystemPrompt()">
+                        <option value="">Select a prompt</option>
+                        <option value="bias_analyst">Bias Analysis Prompt</option>
+                        <option value="prompt_helper">Prompt Helper Prompt</option>
+                        <option value="data_interpreter">Data Interpreter Prompt</option>
+                        <option value="welcome_assistant">Welcome Assistant</option>
+                    </select>
+                    <textarea id="prompt-content" rows="6" placeholder="Prompt content will appear here..." class="form-control" style="display: none;">
+
+
+                    </textarea>
+                    <button class="btn btn-info" onclick="updateSystemPrompt()">Save</button>
+                     <div id="system-prompts-success" class="success-message"></div>
+                     <div id="system-prompts-error" class="error-message"></div>
                 </div>
             </div>
 
@@ -766,6 +787,54 @@
             }
         }
 
+        async function loadSystemPrompt() {
+            const promptId = document.getElementById('system-prompts').value;
+            if (!promptId) {
+                document.getElementById('prompt-content').value = '';
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/admin/system-prompt/${promptId}`);
+                if (!response.ok) throw new Error('Failed to load prompt');
+                
+                const data = await response.json();
+                document.getElementById('prompt-content').value = data.prompt || '';
+                document.getElementById('prompt-content').style.display = "block"
+                
+            } catch (error) {
+                console.error('Error loading system prompt:', error);
+                document.getElementById('prompt-content').value = 'Error loading prompt: ' + error.message;
+            }
+        }
+
+        async function updateSystemPrompt() {
+            const promptId = document.getElementById('system-prompts').value;
+            const content = document.getElementById('prompt-content').value.trim();
+            
+            if (!promptId || !content) {
+                showMessage('❌ Please select a prompt and enter content', 'error', "system-prompts");
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/admin/system-prompt/${promptId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prompt: content })
+                });
+                
+                if (!response.ok) throw new Error('Failed to update prompt');
+                
+                const result = await response.json();
+                showMessage(`✅ ${result.message}`, 'success', "system-prompts");
+                
+            } catch (error) {
+                console.error('Error updating system prompt:', error);
+                showMessage(`❌ ${error.message}`, 'error', "system-prompts");
+            }
+        }
+
         async function resetUserPassword() {
             const email = document.getElementById('reset-email').value.trim();
             const newPassword = document.getElementById('new-password').value;
@@ -815,6 +884,8 @@
                 targetElement = document.getElementById(type === 'success' ? 'system-export-success' : 'system-export-error');
             } else if (section === 'user-management') {
                 targetElement = document.getElementById(type === 'success' ? 'user-management-success' : 'user-management-error');
+            } else if (section === 'system-prompts') {
+                targetElement = document.getElementById(type === 'success' ? 'system-prompts-success' : 'system-prompts-error');
             } else if (section === 'settings') {
                 targetElement = document.getElementById('settings-status');
             } else {

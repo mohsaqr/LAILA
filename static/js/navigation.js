@@ -21,7 +21,7 @@ async function createNavigationHeader() {
                 <i class="fas fa-crown"></i> Admin Panel
             </button>
              
-            <button class="nav-button settings-btn" id="userInfo" onclick="goToUserSettings()">
+            <button class="nav-button settings-btn" id="userInfo" onclick="goToUserSettings()" style="display: none;">
                 <i class="fas fa-user"></i> <span id="userName">Loading...</span>
             </button>
             <button class="nav-button logout-btn" onclick="logout()">

@@ -8,7 +8,14 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <script src="static/js/navigation.js"></script>
     <script src="static/js/showdown.min.js"></script>
-
+    <style>
+        .chat-message ul {
+            padding-left: 40px;
+        }
+        .chat-message ol {
+            padding-left: 20px;
+        }
+    </style>
 </head>
 <body>
     <div class="page-container">
@@ -190,7 +197,7 @@
                 loadingDiv.remove();
 
                 if (data.status === 'success') {
-                    addMessageToChat('ai', converter.makeHtml(data.response), 'conversationHistory');
+                    addMessageToChat('ai', (data.response), 'conversationHistory');
                     
                     // Update state
                     conversationState.questionCount = data.question_count || conversationState.questionCount + 1;
@@ -234,7 +241,7 @@
             const chatContainer = document.getElementById(containerId);
             const messageDiv = document.createElement('div');
             messageDiv.className = `chat-message ${sender}`;
-            messageDiv.innerHTML = message;
+            messageDiv.innerHTML = converter.makeHtml(message);
             chatContainer.appendChild(messageDiv);
             chatContainer.scrollTop = chatContainer.scrollHeight;
             return messageDiv;
