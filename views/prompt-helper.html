@@ -3,349 +3,678 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Prompt Engineering Assistant - LAILA</title>
+    <title>AI Prompt Engineering Assistant</title>
     <link rel="stylesheet" href="static/css/unified-styles.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <script src="static/js/navigation.js"></script>
     <script src="static/js/showdown.min.js"></script>
     <style>
-        .chat-message ul {
+        .prompt-container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            font-family: 'Arial', sans-serif;
+        }
+        
+        .prompt-card {
+            background: white;
+            border-radius: 15px;
+            padding: 40px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .prompt-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 5px;
+            background: linear-gradient(90deg, #ff6b6b, #4ecdc4, #45b7d1, #96ceb4);
+        }
+        
+        .prompt-title {
+            font-size: 2.5em;
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .prompt-subtitle {
+            font-size: 1.2em;
+            color: #7f8c8d;
+            text-align: center;
+            margin-bottom: 40px;
+            font-style: italic;
+        }
+        
+        .chat-messages {
+            height: 500px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            background: #fafafa;
+        }
+        
+        .message {
+            margin-bottom: 20px;
+            padding: 15px;
+            border-radius: 12px;
+            max-width: 85%;
+            animation: fadeIn 0.3s ease-in;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .message.user {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            margin-left: auto;
+            text-align: right;
+        }
+        
+        .message.ai {
+            background: #e9ecef;
+            color: #333;
+            margin-right: auto;
+            border-left: 4px solid #007bff;
+        }
+        
+        .message.system {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+            color: white;
+            margin: 0 auto;
+            margin-bottom: 10px;
+            text-align: center;
+            max-width: 90%;
+        }
+        
+        .message-input-container {
+            display: flex;
+            gap: 15px;
+            align-items: flex-end;
+        }
+        
+        .message-input {
+            flex: 1;
+            padding: 15px;
+            border: 2px solid #ddd;
+            border-radius: 12px;
+            font-size: 16px;
+            resize: vertical;
+            min-height: 50px;
+            max-height: 150px;
+            transition: border-color 0.3s ease;
+        }
+        
+        .message-input:focus {
+            outline: none;
+            border-color: #007bff;
+            box-shadow: 0 0 10px rgba(0, 123, 255, 0.2);
+        }
+        
+        .send-button {
+            padding: 15px 25px;
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            min-width: 100px;
+        }
+        
+        .send-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(40, 167, 69, 0.3);
+        }
+        
+        .send-button:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            color: #6c757d;
+            font-style: italic;
+            margin: 10px 0;
+        }
+        
+        .progress-indicator {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-left: 4px solid #007bff;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e9ecef;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #007bff, #28a745);
+            border-radius: 4px;
+            transition: width 0.3s ease;
+        }
+        
+        .final-prompt {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            color: white;
+            padding: 25px;
+            border-radius: 15px;
+            margin-top: 20px;
+            display: none;
+        }
+        
+        .final-prompt h3 {
+            margin-top: 0;
+            font-size: 1.5em;
+            text-align: center;
+        }
+        
+        .prompt-text {
+            background: rgba(255,255,255,0.1);
+            padding: 20px;
+            border-radius: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.6;
+            margin: 15px 0;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        
+        .copy-button {
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: 1px solid rgba(255,255,255,0.3);
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 10px;
+        }
+        
+        .copy-button:hover {
+            background: rgba(255,255,255,0.3);
+        }
+        
+        .back-link {
+            display: inline-block;
+            color: white;
+            text-decoration: none;
+            padding: 12px 24px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 25px;
+            margin-bottom: 20px;
+            transition: all 0.3s ease;
+        }
+        
+        .back-link:hover {
+            background: rgba(255,255,255,0.3);
+            transform: translateY(-2px);
+        }
+        
+        .restart-button {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 25px;
+            cursor: pointer;
+            margin: 10px;
+            transition: all 0.3s ease;
+        }
+        
+        .restart-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255, 107, 107, 0.3);
+        }
+        .chat-messages ul {
             padding-left: 40px;
         }
-        .chat-message ol {
+        .chat-messages ol {
             padding-left: 20px;
         }
     </style>
 </head>
 <body>
-    <div class="page-container">
-        <div class="content-card">
-            <h1 class="page-title">
-                <i class="fas fa-magic"></i> AI Prompt Engineering Assistant
-            </h1>
-            <p class="page-subtitle">
-                Create powerful AI prompts with guided assistance and expert optimization
-            </p>
+    <div class="prompt-container">
+        <a href="/" class="back-link">
+            <i class="fas fa-arrow-left"></i> Back to Main Menu
+        </a>
+        
+        <div class="prompt-card">
+            <h1 class="prompt-title">🚀 AI Prompt Engineering Assistant</h1>
+            <p class="prompt-subtitle">Let me help you craft the perfect prompt for any AI task!</p>
             
-            <!-- Quick Start Section -->
-            <div class="content-card">
-                <h2 class="section-title">
-                    <i class="fas fa-rocket"></i> Quick Start
-                </h2>
-                <p class="mb-md">
-                    New to prompt engineering? Start with your basic idea and I'll help you refine it into a professional, effective prompt through guided questions.
+            <div class="progress-indicator">
+                <div><strong>Progress:</strong> <span id="progress-text">Getting started...</span></div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progress-fill" style="width: 0%"></div>
+                </div>
+            </div>
+            
+            <div class="chat-messages" id="chat-messages">
+                <div class="message system">
+                    <strong>🎯 Welcome to Prompt Engineering!</strong><br><br>
+                    I'll help you refine your AI prompt using the <strong>PCTFT Framework</strong>:
+                    <br><br>
+                    <strong>📋 P</strong>ersona - Who should the AI be?<br>
+                    <strong>🎯 C</strong>ontext - Background & constraints<br>
+                    <strong>⚡ T</strong>ask - Specific action to perform<br>
+                    <strong>📄 F</strong>ormat - Output structure<br>
+                    <strong>👥 T</strong>arget - Intended audience<br>
+                    <br>
+                    <strong>Let's start! Please share your initial prompt (even if it's rough or incomplete):</strong><br>
+                    <em>Don't worry if it's not perfect - that's what we're here to improve!</em>
+                </div>
+            </div>
+            
+            <div class="loading" id="loading">
+                <i class="fas fa-spinner fa-spin"></i> AI is thinking...
+            </div>
+            
+            <div style="text-align: center; margin-bottom: 15px;">
+                <button id="fill-example-prompt" onclick="fillExamplePrompt()" style="background: linear-gradient(45deg, #ff6b6b, #ee5a24); color: white; border: none; padding: 12px 24px; border-radius: 25px; cursor: pointer; transition: all 0.3s ease; font-size: 14px;">
+                    <i class="fas fa-lightbulb"></i> Fill Example Prompt
+                </button>
+            </div>
+            
+            <div class="message-input-container">
+                <textarea id="user-input" class="message-input" placeholder="Describe the task you want to create a prompt for..." rows="2"></textarea>
+                <button id="send-button" class="send-button">
+                    <i class="fas fa-paper-plane"></i> Send
+                </button>
+            </div>
+            
+            <div class="final-prompt" id="final-prompt">
+                <h3>🎉 Your Perfect Prompt is Ready!</h3>
+                <p>Here's your optimized prompt that you can copy and use in any AI system:</p>
+                <div class="prompt-text" id="final-prompt-text"></div>
+                <button class="copy-button" onclick="copyPrompt()">
+                    <i class="fas fa-copy"></i> Copy Prompt
+                </button>
+                <button class="restart-button" onclick="restartSession()">
+                    <i class="fas fa-redo"></i> Create Another Prompt
+                </button>
+                <button class="discuss-button" onclick="startDiscussion()" style="background: linear-gradient(135deg, #007bff 0%, #0056b3 100%); color: white; border: none; padding: 12px 24px; border-radius: 25px; cursor: pointer; margin: 10px; transition: all 0.3s ease;">
+                    <i class="fas fa-comments"></i> Discuss This Prompt
+                </button>
+            </div>
+            
+            <!-- Discussion Section -->
+            <div class="discussion-section" id="discussion-section" style="display: none;">
+                <h3 style="color: #2c3e50; text-align: center; margin-bottom: 20px;">💬 Prompt Discussion</h3>
+                <p style="text-align: center; color: #7f8c8d; margin-bottom: 20px;">
+                    Discuss your prompt with AI! Ask questions, request modifications, or explore alternatives.
                 </p>
-                <div class="form-group">
-                    <label class="form-label" for="initialPrompt">
-                        <i class="fas fa-lightbulb"></i> What do you want the AI to do? (Describe your basic idea)
-                    </label>
-                    <textarea 
-                        class="form-textarea" 
-                        id="initialPrompt" 
-                        placeholder="Example: Create a dataset of customer reviews for a restaurant"
-                        rows="3"
-                    ></textarea>
-                </div>
-                <button class="btn btn-primary btn-full" onclick="startPromptEngineering()">
-                    <i class="fas fa-play"></i> Start Prompt Engineering
-                </button>
-            </div>
-
-            <!-- Conversation Section -->
-            <div class="content-card" id="conversationSection" style="display: none;">
-                <h2 class="section-title">
-                    <i class="fas fa-comments"></i> Prompt Development Conversation
-                </h2>
                 
-                <div class="chat-container" id="conversationHistory">
-                    <!-- Conversation messages will appear here -->
+                <div class="discussion-messages" id="discussion-messages" style="height: 300px; overflow-y: auto; border: 1px solid #ddd; border-radius: 12px; padding: 20px; margin-bottom: 20px; background: #fafafa;">
+                    <div class="message ai">
+                        <strong>AI Assistant:</strong> Great prompt! I'm here to help you discuss and refine it further. You can ask me to:
+                        <br><br>
+                        • <strong>Modify</strong> specific parts of the prompt<br>
+                        • <strong>Explain</strong> why certain elements were included<br>
+                        • <strong>Suggest alternatives</strong> for different use cases<br>
+                        • <strong>Test</strong> how the prompt might work in practice<br>
+                        • <strong>Adapt</strong> it for different AI systems<br>
+                        <br>
+                        What would you like to discuss about your prompt?
+                    </div>
                 </div>
                 
-                <div class="form-group mt-md">
-                    <textarea 
-                        class="form-textarea" 
-                        id="userResponse" 
-                        placeholder="Type your response here..."
-                        rows="3"
-                    ></textarea>
-                </div>
-                <div class="grid grid-2">
-                    <button class="btn btn-secondary" onclick="sendResponse()">
-                        <i class="fas fa-reply"></i> Send Response
-                    </button>
-                    <button class="btn btn-outline" onclick="resetConversation()">
-                        <i class="fas fa-refresh"></i> Start Over
-                    </button>
-                </div>
-            </div>
-
-            <!-- Final Prompt Section -->
-            <div class="content-card" id="finalPromptSection" style="display: none;">
-                <h2 class="section-title">
-                    <i class="fas fa-trophy"></i> Your Optimized Prompt
-                </h2>
-                <div class="form-group">
-                    <label class="form-label">Ready to use AI prompt:</label>
-                    <textarea 
-                        class="form-textarea" 
-                        id="finalPrompt" 
-                        readonly
-                        rows="8"
-                        style="background-color: #f8f9fa; font-family: monospace;"
-                    ></textarea>
-                </div>
-                <div class="grid grid-3">
-                    <button class="btn btn-primary" onclick="copyPrompt()">
-                        <i class="fas fa-copy"></i> Copy Prompt
-                    </button>
-                    <button class="btn btn-secondary" onclick="savePrompt()">
-                        <i class="fas fa-save"></i> Save Prompt
-                    </button>
-                    <button class="btn btn-accent" onclick="discussPrompt()">
-                        <i class="fas fa-edit"></i> Refine Further
-                    </button>
-                </div>
-            </div>
-
-            <!-- Prompt Discussion Section -->
-            <div class="content-card" id="promptDiscussionSection" style="display: none;">
-                <h2 class="section-title">
-                    <i class="fas fa-edit"></i> Prompt Refinement Chat
-                </h2>
-                <p class="page-subtitle">Ask questions or request modifications to your prompt</p>
-                
-                <div class="chat-container" id="discussionHistory">
-                    <!-- Discussion messages will appear here -->
+                <div class="discussion-loading" id="discussion-loading" style="display: none; text-align: center; color: #6c757d; font-style: italic; margin: 10px 0;">
+                    <i class="fas fa-spinner fa-spin"></i> AI is thinking...
                 </div>
                 
-                <div class="form-group mt-md">
-                    <textarea 
-                        class="form-textarea" 
-                        id="discussionMessage" 
-                        placeholder="Ask about your prompt: 'Make it shorter', 'Add more examples', 'Explain why you included X', etc."
-                        rows="3"
-                    ></textarea>
+                <div class="discussion-input-container" style="display: flex; gap: 15px; align-items: flex-end;">
+                    <textarea id="discussion-input" placeholder="Ask about your prompt, request changes, or explore alternatives..." style="flex: 1; padding: 15px; border: 2px solid #ddd; border-radius: 12px; font-size: 16px; resize: vertical; min-height: 50px; max-height: 150px; transition: border-color 0.3s ease;" rows="2"></textarea>
+                    <button id="discussion-send" onclick="sendDiscussionMessage()" style="padding: 15px 25px; background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white; border: none; border-radius: 12px; cursor: pointer; font-size: 16px; transition: all 0.3s ease; min-width: 100px;">
+                        <i class="fas fa-paper-plane"></i> Send
+                    </button>
                 </div>
-                <button class="btn btn-primary btn-full" onclick="sendDiscussionMessage()">
-                    <i class="fas fa-paper-plane"></i> Send Message
-                </button>
             </div>
         </div>
     </div>
 
     <script>
-        // Prompt Engineering State
-        let conversationState = {
-            questionCount: 0,
-            promptData: {},
-            currentPrompt: '',
-            finalPrompt: null
-        };
+        // User session management
+        let userId = localStorage.getItem('userId');
+        if (!userId) {
+            userId = 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+            localStorage.setItem('userId', userId);
+        }
+
         let converter = null;
         document.addEventListener('DOMContentLoaded', function() {
             // Initialize the chat interface
             converter = new showdown.Converter();
             
         });
-        async function startPromptEngineering() {
-            const initialPrompt = document.getElementById('initialPrompt').value.trim();
-            if (!initialPrompt) {
-                alert('Please describe what you want the AI to do first.');
-                return;
-            }
+        // Session state
+        let questionCount = 0;
+        let maxQuestions = 7;
+        let promptData = {
+            task: '',
+            context: '',
+            audience: '',
+            format: '',
+            tone: '',
+            constraints: '',
+            examples: ''
+        };
 
-            // Reset state
-            conversationState = {
-                questionCount: 0,
-                promptData: { task: initialPrompt },
-                currentPrompt: initialPrompt,
-                finalPrompt: null
-            };
+        // DOM elements
+        const chatMessages = document.getElementById('chat-messages');
+        const userInput = document.getElementById('user-input');
+        const sendButton = document.getElementById('send-button');
+        const loading = document.getElementById('loading');
+        const progressText = document.getElementById('progress-text');
+        const progressFill = document.getElementById('progress-fill');
+        const finalPrompt = document.getElementById('final-prompt');
+        const finalPromptText = document.getElementById('final-prompt-text');
 
-            // Show conversation section
-            document.getElementById('conversationSection').style.display = 'block';
-            document.getElementById('finalPromptSection').style.display = 'none';
-            document.getElementById('promptDiscussionSection').style.display = 'none';
+        // Log page load
+        fetch('/api/log-interaction', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                user_id: userId,
+                interaction_type: 'page_load',
+                page: 'prompt_helper',
+                action: 'prompt_helper_opened',
+                details: 'User opened prompt engineering assistant',
+                session_data: ''
+            })
+        }).catch(console.error);
 
-            // Clear conversation
-            document.getElementById('conversationHistory').innerHTML = '';
-
-            // Log interaction
-            logInteraction('start_prompt_engineering', 'prompt-helper', 'startButton');
-
-            // Send first request to AI
-            await sendPromptEngineeringRequest(initialPrompt);
+        // Update progress
+        function updateProgress() {
+            const progress = (questionCount / maxQuestions) * 100;
+            progressFill.style.width = progress + '%';
+            progressText.textContent = `Question ${questionCount} of ${maxQuestions} - Building your perfect prompt...`;
         }
 
-        async function sendPromptEngineeringRequest(message) {
-            try {
-                const loadingDiv = addMessageToChat('ai', '<i class="fas spinner"></i> Thinking...', 'conversationHistory');
+        // Add message to chat
+        function addMessage(content, type) {
+            const message = document.createElement('div');
+            message.className = `message ${type}`;
+            message.innerHTML = converter.makeHtml(content);;
+            chatMessages.appendChild(message);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
 
+        // Send message
+        async function sendMessage() {
+            const message = userInput.value.trim();
+            if (!message) return;
+
+            // Add user message
+            addMessage(`<strong>You:</strong> ${message}`, 'user');
+            userInput.value = '';
+            sendButton.disabled = true;
+            loading.style.display = 'block';
+
+            try {
                 const response = await fetch('/api/prompt-engineering', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         message: message,
-                        question_count: conversationState.questionCount,
-                        prompt_data: conversationState.promptData
+                        question_count: questionCount,
+                        prompt_data: promptData,
+                        user_id: userId
                     })
                 });
 
                 const data = await response.json();
-                
-                // Remove loading message
-                loadingDiv.remove();
 
                 if (data.status === 'success') {
-                    addMessageToChat('ai', (data.response), 'conversationHistory');
-                    
-                    // Update state
-                    conversationState.questionCount = data.question_count || conversationState.questionCount + 1;
-                    conversationState.promptData = data.prompt_data || conversationState.promptData;
+                    // Update prompt data
+                    if (data.prompt_data) {
+                        promptData = { ...promptData, ...data.prompt_data };
+                    }
 
-                    // Check if we have a final prompt
+                    // Update question count
+                    if (data.question_count !== undefined) {
+                        questionCount = data.question_count;
+                        updateProgress();
+                    }
+
+                    // Add AI response
+                    addMessage(`<strong>AI Assistant:</strong> ${data.response}`, 'ai');
+
+                    // Check if we have the final prompt
                     if (data.final_prompt) {
-                        conversationState.finalPrompt = data.final_prompt;
-                        showFinalPrompt(data.final_prompt);
+                        finalPromptText.textContent = data.final_prompt;
+                        finalPrompt.style.display = 'block';
+                        userInput.style.display = 'none';
+                        sendButton.style.display = 'none';
+                        progressText.textContent = 'Complete! Your perfect prompt is ready.';
+                        progressFill.style.width = '100%';
                     }
                 } else {
-                    addMessageToChat('ai', 'I apologize, but I encountered an error. Please try again.', 'conversationHistory');
+                    throw new Error(data.error || 'Failed to get AI response');
                 }
             } catch (error) {
-                console.error('Error:', error);
-                addMessageToChat('ai', 'Connection error. Please check your connection and try again.', 'conversationHistory');
+                console.error('Prompt engineering error:', error);
+                addMessage(`<strong>Error:</strong> ${error.message}. Please try again.`, 'ai');
+            } finally {
+                loading.style.display = 'none';
+                sendButton.disabled = false;
+                userInput.focus();
             }
         }
 
-        async function sendResponse() {
-            const response = document.getElementById('userResponse').value.trim();
-            if (!response) return;
-
-            // Add user message to chat
-            addMessageToChat('user', response, 'conversationHistory');
-            
-            // Clear input
-            document.getElementById('userResponse').value = '';
-
-            // Send to AI
-            await sendPromptEngineeringRequest(response);
-        }
-
-        function showFinalPrompt(prompt) {
-            document.getElementById('finalPrompt').value = prompt;
-            document.getElementById('finalPromptSection').style.display = 'block';
-            document.getElementById('finalPromptSection').scrollIntoView({ behavior: 'smooth' });
-        }
-
-        function addMessageToChat(sender, message, containerId) {
-            const chatContainer = document.getElementById(containerId);
-            const messageDiv = document.createElement('div');
-            messageDiv.className = `chat-message ${sender}`;
-            messageDiv.innerHTML = converter.makeHtml(message);
-            chatContainer.appendChild(messageDiv);
-            chatContainer.scrollTop = chatContainer.scrollHeight;
-            return messageDiv;
-        }
-
+        // Copy prompt to clipboard
         function copyPrompt() {
-            const prompt = document.getElementById('finalPrompt');
-            prompt.select();
-            document.execCommand('copy');
-            
-            // Show feedback
-            const button = event.target;
-            const originalText = button.innerHTML;
-            button.innerHTML = '<i class="fas fa-check"></i> Copied!';
-            button.classList.add('btn-success');
-            
-            setTimeout(() => {
-                button.innerHTML = originalText;
-                button.classList.remove('btn-success');
-            }, 2000);
-            
-            logInteraction('copy_prompt', 'prompt-helper', 'copyButton');
+            const promptText = finalPromptText.textContent;
+            navigator.clipboard.writeText(promptText).then(() => {
+                const copyButton = document.querySelector('.copy-button');
+                const originalText = copyButton.innerHTML;
+                copyButton.innerHTML = '<i class="fas fa-check"></i> Copied!';
+                setTimeout(() => {
+                    copyButton.innerHTML = originalText;
+                }, 2000);
+            }).catch(err => {
+                console.error('Failed to copy: ', err);
+                alert('Failed to copy prompt. Please select and copy manually.');
+            });
         }
 
-        function savePrompt() {
-            const prompt = document.getElementById('finalPrompt').value;
-            const blob = new Blob([prompt], { type: 'text/plain' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'optimized-prompt.txt';
-            a.click();
-            URL.revokeObjectURL(url);
+        // Restart session
+        function restartSession() {
+            questionCount = 0;
+            promptData = {
+                task: '',
+                context: '',
+                audience: '',
+                format: '',
+                tone: '',
+                constraints: '',
+                examples: ''
+            };
             
-            logInteraction('save_prompt', 'prompt-helper', 'saveButton');
+            // Reset UI
+            chatMessages.innerHTML = `
+                <div class="message system">
+                    <strong>🎯 Welcome to Prompt Engineering!</strong><br><br>
+                    I'll help you refine your AI prompt using the <strong>PCTFT Framework</strong>:
+                    <br><br>
+                    <strong>📋 P</strong>ersona - Who should the AI be?<br>
+                    <strong>🎯 C</strong>ontext - Background & constraints<br>
+                    <strong>⚡ T</strong>ask - Specific action to perform<br>
+                    <strong>📄 F</strong>ormat - Output structure<br>
+                    <strong>👥 T</strong>arget - Intended audience<br>
+                    <br>
+                    <strong>Let's start! Please share your initial prompt (even if it's rough or incomplete):</strong><br>
+                    <em>Don't worry if it's not perfect - that's what we're here to improve!</em>
+                </div>
+            `;
+            
+            finalPrompt.style.display = 'none';
+            userInput.style.display = 'block';
+            sendButton.style.display = 'block';
+            progressText.textContent = 'Getting started...';
+            progressFill.style.width = '0%';
+            userInput.focus();
         }
 
-        function discussPrompt() {
-            document.getElementById('promptDiscussionSection').style.display = 'block';
-            document.getElementById('discussionHistory').innerHTML = '';
-            addMessageToChat('ai', `I'm ready to help you refine your prompt! Here's what we created:\n\n"${conversationState.finalPrompt}"\n\nWhat would you like to change or discuss about it?`, 'discussionHistory');
-            document.getElementById('promptDiscussionSection').scrollIntoView({ behavior: 'smooth' });
+        // Event listeners
+        sendButton.addEventListener('click', sendMessage);
+        
+        userInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+
+        // Start discussion about the prompt
+        function startDiscussion() {
+            document.getElementById('discussion-section').style.display = 'block';
+            document.getElementById('discussion-input').focus();
+            
+            // Log discussion start
+            fetch('/api/log-interaction', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    user_id: userId,
+                    interaction_type: 'prompt_discussion',
+                    page: 'prompt_helper',
+                    action: 'start_discussion',
+                    details: 'User started prompt discussion',
+                    session_data: 'prompt_ready'
+                })
+            }).catch(console.error);
         }
 
+        // Add message to discussion
+        function addDiscussionMessage(content, type) {
+            const discussionMessages = document.getElementById('discussion-messages');
+            const message = document.createElement('div');
+            message.className = `message ${type}`;
+            message.innerHTML = converter.makeHtml(content);
+            discussionMessages.appendChild(message);
+            discussionMessages.scrollTop = discussionMessages.scrollHeight;
+        }
+
+        // Send discussion message
         async function sendDiscussionMessage() {
-            const message = document.getElementById('discussionMessage').value.trim();
+            const discussionInput = document.getElementById('discussion-input');
+            const discussionSend = document.getElementById('discussion-send');
+            const discussionLoading = document.getElementById('discussion-loading');
+            
+            const message = discussionInput.value.trim();
             if (!message) return;
 
-            addMessageToChat('user', message, 'discussionHistory');
-            document.getElementById('discussionMessage').value = '';
+            // Add user message
+            addDiscussionMessage(`<strong>You:</strong> ${message}`, 'user');
+            discussionInput.value = '';
+            discussionSend.disabled = true;
+            discussionLoading.style.display = 'block';
 
             try {
-                const loadingDiv = addMessageToChat('ai', '<i class="fas spinner"></i> Analyzing...', 'discussionHistory');
-
                 const response = await fetch('/api/prompt-discussion', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         message: message,
-                        current_prompt: conversationState.finalPrompt
+                        current_prompt: finalPromptText.textContent,
+                        user_id: userId
                     })
                 });
 
                 const data = await response.json();
-                loadingDiv.remove();
 
                 if (data.status === 'success') {
-                    addMessageToChat('ai', data.response, 'discussionHistory');
+                    // Add AI response
+                    addDiscussionMessage(`<strong>AI Assistant:</strong> ${data.response}`, 'ai');
                     
-                    // Update prompt if modified
+                    // If there's an updated prompt, show it
                     if (data.updated_prompt) {
-                        conversationState.finalPrompt = data.updated_prompt;
-                        document.getElementById('finalPrompt').value = data.updated_prompt;
-                        addMessageToChat('ai', `I've updated your prompt. Check the "Your Optimized Prompt" section above to see the changes.`, 'discussionHistory');
+                        finalPromptText.textContent = data.updated_prompt;
+                        addDiscussionMessage(`<strong>🔄 Updated Prompt:</strong><br><div style="background: rgba(0,123,255,0.1); padding: 15px; border-radius: 8px; margin-top: 10px; font-family: monospace; white-space: pre-wrap;">${data.updated_prompt}</div>`, 'ai');
                     }
+                } else {
+                    throw new Error(data.error || 'Failed to get AI response');
                 }
             } catch (error) {
-                console.error('Error:', error);
-                addMessageToChat('ai', 'Connection error. Please try again.', 'discussionHistory');
+                console.error('Discussion error:', error);
+                addDiscussionMessage(`<strong>Error:</strong> ${error.message}. Please try again.`, 'ai');
+            } finally {
+                discussionLoading.style.display = 'none';
+                discussionSend.disabled = false;
+                discussionInput.focus();
             }
         }
 
-        function resetConversation() {
-            if (confirm('Are you sure you want to start over? This will clear your current progress.')) {
-                document.getElementById('conversationSection').style.display = 'none';
-                document.getElementById('finalPromptSection').style.display = 'none';
-                document.getElementById('promptDiscussionSection').style.display = 'none';
-                document.getElementById('initialPrompt').value = '';
-                conversationState = { questionCount: 0, promptData: {}, currentPrompt: '', finalPrompt: null };
+        // Add enter key support for discussion
+        document.addEventListener('DOMContentLoaded', () => {
+            const discussionInput = document.getElementById('discussion-input');
+            if (discussionInput) {
+                discussionInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        sendDiscussionMessage();
+                    }
+                });
             }
+        });
+
+        // Fill example prompt
+        function fillExamplePrompt() {
+            const examplePrompt = "I need help creating a comprehensive dataset of student academic performance data for educational research. The dataset should include various demographic factors, academic metrics, and support interventions to help analyze factors that influence student success.";
+            
+            userInput.value = examplePrompt;
+            userInput.focus();
+            
+            // Add a message to show the example was filled
+            addMessage(`<strong>📝 Example Filled:</strong> I've filled in an example prompt about creating educational research data. This is a common use case that demonstrates how to request data generation with specific requirements. You can modify this or use it as-is to see how the prompt engineering process works!`, 'system');
+            
+            // Log the example fill action
+            fetch('/api/log-interaction', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    user_id: userId,
+                    interaction_type: 'example_fill',
+                    page: 'prompt_helper',
+                    action: 'fill_example_prompt',
+                    details: 'User filled form with example prompt for educational data generation',
+                    session_data: 'example_type: educational_research_data'
+                })
+            }).catch(console.error);
+            document.getElementById('fill-example-prompt').style.display = 'none'; // Hide the example button after filling
+
         }
-
-        // Enter key handling
-        document.getElementById('userResponse').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter' && e.ctrlKey) {
-                sendResponse();
-            }
-        });
-
-        document.getElementById('discussionMessage').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter' && e.ctrlKey) {
-                sendDiscussionMessage();
-            }
-        });
+        // Focus on input
+        userInput.focus();
     </script>
 </body>
-</html> 
+</html>
