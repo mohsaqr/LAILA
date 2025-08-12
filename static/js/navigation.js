@@ -110,6 +110,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     // Log page view
     const page = window.location.pathname.split('/').pop() || 'index';
     logInteraction('page_view', page);
+    addFooterLinks();
 });
 
 // Unified CSS for navigation (inject into head)
@@ -211,6 +212,7 @@ const navCSS = `
     /* Adjust body padding to account for fixed nav */
     body {
         padding-top: 60px !important;
+        position: relative;
     }
     
     /* Responsive design */
@@ -235,8 +237,37 @@ const navCSS = `
             padding: 4px 12px;
         }
     }
+    .footer-links {
+        display: block;
+        position: absolute;
+        bottom: 0;
+        height: 50px;
+        width: 100%;
+        padding: 30px 0;        
+        text-align: center;
+        margin-top: 20px;
+        font-size: 0.9em;    
+        color: #666;
+    }   
+
+    .footer-links a {
+        color: white;
+        text-decoration: none;
+        margin: 0 10px;
+    }
 </style>
 `;
 
+function addFooterLinks() {
+    const footerLinks = document.body.appendChild(document.createElement('div'));
+    footerLinks.className = 'footer-links';
+   
+    if (footerLinks) {
+        footerLinks.innerHTML = `
+            <a target="_blank" href="https://github.com/mohsaqr/LAILA/">LAILA source code</a>
+            <a href="/privacy">Privacy Policy</a>
+        `;
+    }
+};
 // Inject CSS into head
 document.head.insertAdjacentHTML('beforeend', navCSS); 

@@ -8,7 +8,7 @@ import sqlite3
 import openai
 import google.generativeai as genai
 from config import get_ai_config, LOGIN_TEMPLATE, ADMIN_ACCESS_DENIED_TEMPLATE, CHAT_SYSTEM_PROMPT, load_system_prompt, list_available_prompts, save_system_prompt
-from API_Settings import  DEFAULT_AI_SERVICE, DEFAULT_GOOGLE_MODEL, DEFAULT_OPENAI_MODEL, is_service_available, get_api_key
+from API_Settings import  DEFAULT_AI_SERVICE, DEFAULT_GOOGLE_MODEL, DEFAULT_OPENAI_MODEL, is_service_available, get_api_key, get_default_model
 import bcrypt
 import uuid
 import logging
@@ -1394,17 +1394,41 @@ def prompt_engineering():
         
         # Check if we should generate final prompt
         final_prompt = None
+       
         if new_question_count >= 7 or "final prompt" in result.lower():
             # Let AI craft the final optimized prompt
-            prompt_crafting_request = f"""Based on our conversation, please craft a professional, optimized AI prompt that incorporates all the information we've discussed. \n\nHere's what we've gathered:\n- Task: {updated_prompt_data.get('task', 'Not specified')}\n- Context: {updated_prompt_data.get('context', 'Not specified')}\n- Audience: {updated_prompt_data.get('audience', 'Not specified')}\n- Format: {updated_prompt_data.get('format', 'Not specified')}\n- Tone: {updated_prompt_data.get('tone', 'Not specified')}\n- Constraints: {updated_prompt_data.get('constraints', 'Not specified')}\n- Examples/Details: {updated_prompt_data.get('examples', 'Not specified')}\n\nPlease create a single, well-crafted prompt that someone can copy and paste into any AI system to get excellent results. The prompt should be:\n1. Clear and specific\n2. Include all necessary context\n3. Specify the desired output format\n4. Include any important constraints\n5. Be optimized for best AI performance\n\nReturn ONLY the final prompt, nothing else."""
+            prompt_crafting_request = f"""Based on our conversation where all questions have been answered, please craft a professional, optimized AI prompt that incorporates all the information we've discussed. \n\nHere's what we've gathered:\n- Task: {updated_prompt_data.get('task', 'Not specified')}\n- Context: {updated_prompt_data.get('context', 'Not specified')}\n- Audience: {updated_prompt_data.get('audience', 'Not specified')}\n- Format: {updated_prompt_data.get('format', 'Not specified')}\n- Tone: {updated_prompt_data.get('tone', 'Not specified')}\n- Constraints: {updated_prompt_data.get('constraints', 'Not specified')}\n- Examples/Details: {updated_prompt_data.get('examples', 'Not specified')}\n\nPlease create a single, well-crafted prompt that someone can copy and paste into any AI system to get excellent results. The prompt should be:\n1. Clear and specific\n2. Include all necessary context\n3. Specify the desired output format\n4. Include any important constraints\n5. Be optimized for best AI performance\n\nReturn ONLY the final prompt, no additional text."""
             
             try:
-                prompt_response = model.generate_content(prompt_crafting_request)
-                final_prompt = prompt_response.text.strip()
-            except:
+                # prompt_response = model.generate_content(prompt_crafting_request)
+                result, model = make_ai_call(
+                    prompt_crafting_request,
+                    system_prompt,
+                    service,
+                    model= model_name 
+                )
+                final_prompt = result
+            except Exception as e:
                 # Fallback if AI crafting fails
+                print("here")
+                print(e)
                 final_prompt = f"Create a comprehensive {updated_prompt_data.get('task', 'response')} that addresses all the requirements we discussed in our conversation."
-        
+            # Log AI response
+            log_chat_interaction(
+                user_id=current_user.id,
+                chat_type='prompt_engineering',
+                message_type='ai_response',
+                content=final_prompt,
+                context_data={
+                    'question_count': question_count,
+                    'prompt_data': str(prompt_data),
+                    'user_question': user_message,
+                    'system_prompt_length': len(system_prompt) 
+                },
+                ai_model=model,
+                ai_response=result,
+                processing_time=processing_time
+            )            
         return jsonify({
             'response': result,
             'question_count': new_question_count,
@@ -1563,6 +1587,21 @@ def interpret_data():
             # service=ai_service, 
             # model=ai_model, 
             # user_api_key=user_api_key
+        )
+        log_chat_interaction(
+            user_id=user_id,
+            chat_type='data_interpreter',
+            message_type='user_input',
+            content=interpretation_prompt,
+            context_data={
+                'data_type': data_type,
+                'analysis_type': analysis_type,
+                'audience_level': audience_level,
+                'research_context': research_context,
+                'target_insights': target_insights,
+                'input_data_sample': data_content[:500]
+            },
+            ai_model=model 
         )
         
         processing_time = int((time.time() - start_time) * 1000)  # Convert to milliseconds
@@ -1855,7 +1894,7 @@ def bias_analysis():
             from openai import OpenAI
             client = OpenAI(api_key=api_key)
             response = client.chat.completions.create(
-                model='gpt-3.5-turbo',
+                model='gpt-4.1-nano',
                 messages=[
                     {"role": "system", "content": "You are an expert in bias detection for academic vignettes."},
                     {"role": "user", "content": f"Analyze the following vignette for bias and provide a brief explanation: {vignette}"}
@@ -2733,6 +2772,11 @@ def chatbot_admin():
 #@require_true_admin
 def custom_chatbots():
     return send_file('views/custom-chatbots.html')
+
+
+@app.route('/privacy')
+def privacy():
+    return send_file('views/privacy.html')
 
 # --- Endpoints: System Chatbots ---
 @app.route('/api/system-chatbots/available')

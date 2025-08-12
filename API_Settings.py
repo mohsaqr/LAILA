@@ -24,7 +24,7 @@ DEFAULT_AI_SERVICE = "google"
 
 # Export these for backward compatibility
 DEFAULT_GOOGLE_MODEL = "gemini-1.5-flash"
-DEFAULT_OPENAI_MODEL = "gpt-4o-mini"
+DEFAULT_OPENAI_MODEL = "gpt-4.1-nano"
 
 # Available models for each service
 AI_MODELS = {
@@ -49,10 +49,10 @@ AI_MODELS = {
         }
     },
     'openai': {
-        'default': 'gpt-4o-mini',
+        'default': 'gpt-4.1-nano',
         'models': {
-            'gpt-4o-mini': {
-                'name': 'GPT-4o Mini (Fast & Efficient)',
+            'gpt-4.1-nano': {
+                'name': 'GPT-4.1 Nano (Fast & Efficient)',
                 'description': 'Best for quick analysis and cost-effective processing',
                 'max_tokens': 16384
             },

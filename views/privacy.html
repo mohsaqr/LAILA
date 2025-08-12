@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Educational Chatbot Configuration</title>
+    <link rel="stylesheet" href="static/css/unified-styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <script src="static/js/navigation.js"></script>
+    <style>
+        .policy {
+            margin: 1.5em;
+            color:rgba(255,255,255,0.9);
+        }
+        .config-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            font-family: 'Arial', sans-serif;
+        }
+        
+        .config-header {
+            background: rgba(255,255,255,0.1);
+            padding: 25px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            text-align: center;
+            backdrop-filter: blur(10px);
+        }
+        
+        .config-title {
+            color: white;
+            font-size: 2.5em;
+            margin: 0 0 10px 0;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .config-subtitle {
+            color: rgba(255,255,255,0.9);
+            font-size: 1.2em;
+            margin: 0;
+        }
+        
+        .config-form {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        
+        .form-section {
+            margin-bottom: 40px;
+            padding-bottom: 30px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+        
+        .form-section:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+        
+        .section-title {
+            font-size: 1.5em;
+            color: #2c3e50;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .form-group {
+            margin-bottom: 25px;
+        }
+        
+        .form-label {
+            display: block;
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 8px;
+            font-size: 1.1em;
+        }
+        
+        .form-input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s ease;
+            box-sizing: border-box;
+        }
+        
+        .form-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 10px rgba(102, 126, 234, 0.2);
+        }
+        
+        .form-textarea {
+            min-height: 120px;
+            resize: vertical;
+            font-family: 'Courier New', monospace;
+
+        }
+        
+        .radio-group {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .radio-option {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            padding: 12px 20px;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            transition: all 0.3s ease;
+            flex: 1;
+        }
+        
+        .radio-option:hover {
+            border-color: #667eea;
+            background: #f8f9ff;
+        }
+        
+        .radio-option.selected {
+            border-color: #667eea;
+            background: #667eea;
+            color: white;
+        }
+        
+        .radio-option input[type="radio"] {
+            margin: 0;
+        }
+        
+        .api-key-section {
+            display: none;
+            margin-top: 20px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .api-key-section.show {
+            display: block;
+        }
+        
+        .help-text {
+            font-size: 0.9em;
+            color: #666;
+            margin-top: 5px;
+            line-height: 1.4;
+        }
+        
+        .radio-option.selected .help-text {
+            color: white;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-top: 40px;
+            flex-wrap: wrap;
+        }
+        
+        .config-button {
+            padding: 15px 30px;
+            border: none;
+            border-radius: 25px;
+            font-size: 1.1em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-width: 180px;
+            justify-content: center;
+        }
+        
+        .save-button {
+            background: linear-gradient(45deg, #28a745, #20c997);
+            color: white;
+        }
+        
+        .save-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(40, 167, 69, 0.3);
+        }
+        
+        .load-button {
+            background: linear-gradient(45deg, #007bff, #0056b3);
+            color: white;
+        }
+        
+        .load-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 123, 255, 0.3);
+        }
+        
+        .next-button {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+        }
+        
+        .next-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+        }
+        
+        .back-button {
+            background: linear-gradient(45deg, #6c757d, #495057);
+            color: white;
+        }
+        
+        .back-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(108, 117, 125, 0.3);
+        }
+        
+        .hidden-input {
+            display: none;
+        }
+        
+        .status-message {
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            display: none;
+        }
+        
+        .status-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .status-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        @media (max-width: 768px) {
+            .config-container {
+                padding: 20px;
+            }
+            
+            .config-form {
+                padding: 25px;
+            }
+            
+            .radio-group {
+                flex-direction: column;
+            }
+            
+            .button-group {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .config-button {
+                width: 100%;
+                max-width: 300px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="policy">
+    <header>
+    <h1>Privacy Policy for the LAILA System</h1>
+    <p class="meta">Last updated: August 10, 2025</p>
+  </header>
+
+  <section id="introduction">
+    <h2>1. Introduction</h2>
+    <p>
+      The LAILA system operates within the secure infrastructure of Finland’s IT Center for Science (CSC). This Privacy Policy explains how LAILA handles data in accordance with the General Data Protection Regulation (GDPR) (EU) 2016/679 and applicable Finnish data protection laws. LAILA is a research system and is designed to work with anonymized data only.
+    </p>
+  </section>
+
+  <section id="controller">
+    <h2>2. Data Controller</h2>
+    <p>
+      The data controller for the LAILA system is the LAILA research team. Questions about this policy can be directed through the project’s GitHub repository at
+      <a href="https://github.com/mohsaqr/LAILA" rel="noopener noreferrer">github.com/mohsaqr/LAILA</a>
+      or via email at <em>mohammed.saqr@uef.fi</em>.
+    </p>
+  </section>
+
+  <section id="purpose">
+    <h2>3. Purpose of Processing</h2>
+    <p>
+      LAILA supports scientific research activities. Processing serves research objectives such as developing and evaluating methods, models, and tools. The system does not process data for marketing, advertising, or unrelated commercial purposes.
+    </p>
+  </section>
+
+  <section id="data-types">
+    <h2>4. Type of Data Processed</h2>
+    <p>
+    The system stores users' email for authentication purposes. Identifiers that could directly or indirectly point to a natural person are removed before processing or analysis. 
+    </p>
+  </section>
+
+  <section id="third-parties">
+    <h2>5. Interaction with Commercial AI Services</h2>
+    <p>
+      LAILA may interact with commercial AI services for research purposes. Data transmitted to such services is anonymized and stripped of information that could identify a user directly or indirectly. The identity of users is not disclosed to these services. Interactions occur only to support research tasks, and providers are not given personal data.
+    </p>
+  </section>
+
+  <section id="legal-basis">
+    <h2>6. Legal Basis Under GDPR</h2>
+    <p>
+      GDPR Recital 26 clarifies that anonymized information which does not relate to an identified or identifiable natural person is not personal data. Since LAILA processes only anonymized data, the provisions requiring a lawful basis for personal data processing do not apply. If a future feature were to require personal data, this policy would be updated in advance and an appropriate legal basis would be identified and documented.
+    </p>
+  </section>
+
+  <section id="security">
+    <h2>7. Data Storage and Security</h2>
+    <p>
+      All processing takes place within CSC’s secure computing environment. Technical and organizational measures such as access controls, network safeguards, logging, and monitoring are used to reduce risks of unauthorized access, alteration, or misuse. Anonymization reduces privacy risk and no personal data is intentionally stored in LAILA.
+    </p>
+  </section>
+
+  <section id="retention">
+    <h2>8. Data Retention</h2>
+    <p>
+      Anonymized datasets are retained only for the duration needed to meet research aims and reproducibility requirements, subject to project or funder obligations. Since LAILA does not store personal data, GDPR retention rules specific to personal data do not apply to these datasets.
+    </p>
+  </section>
+
+  <section id="data-subject-rights">
+    <h2>9. Rights of Individuals</h2>
+    <p>
+      Rights under GDPR Articles 15–22 (such as access, rectification, erasure, restriction, portability, and objection) apply to personal data. The datasets processed by LAILA are anonymized and cannot be linked to a person, so these rights do not apply to data handled by the system. If you believe personal data has been included accidentally, contact the LAILA research team so the data can be reviewed and removed if necessary.
+    </p>
+  </section>
+
+  <section id="sharing">
+    <h2>10. Data Sharing and Transfers</h2>
+    <p>
+      Anonymized datasets may be shared with collaborating research institutions or processed through commercial AI services for research tasks. No personal data is transferred outside the EU/EEA. Where collaborators or providers are located outside the EU/EEA, only anonymized data is shared.
+    </p>
+  </section>
+
+  <section id="cookies">
+    <h2>11. Cookies and Telemetry</h2>
+    <p>
+      LAILA does not intentionally collect personal data through cookies or telemetry. If a web interface is used, only essential cookies required for basic functionality may be present and these do not store personal data. Any future change that introduces non-essential cookies or telemetry would be documented and, where required, consent would be requested in advance.
+    </p>
+  </section>
+
+  <section id="changes">
+    <h2>12. Changes to This Policy</h2>
+    <p>
+      This Privacy Policy may be updated to reflect changes in research practices, infrastructure, or legal requirements. Significant changes will be noted in the project documentation and version control history.
+    </p>
+  </section>
+
+  <section id="contact">
+    <h2>13. Contact</h2>
+    <p>
+      Questions about this Privacy Policy or LAILA’s data handling can be sent through the project’s GitHub repository at
+      <a href="https://github.com/mohsaqr/LAILA" rel="noopener noreferrer">github.com/mohsaqr/LAILA</a>
+      or via email at <em>your-contact-email@your-domain</em>.
+    </p>
+  </section>
+
+  <footer>
+    <p class="meta">Repository: <a href="https://github.com/mohsaqr/LAILA" rel="noopener noreferrer">github.com/mohsaqr/LAILA</a></p>
+  </footer>
+  </div>
+  <br/>
+  <br/>
+</body>
+</html>
